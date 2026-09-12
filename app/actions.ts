@@ -7,8 +7,13 @@ import {
   DEFAULT_DRINK_FAVORITES,
   DEFAULT_FAVORITES,
   LIFE_MIN_PER_CIG,
-  productById,
+  PREV_DEFAULT_DRINK_FAVORITES,
+  PREV_DEFAULT_FAVORITES,
   displayCost,
+  isSpiritPeg,
+  productById,
+  spiritKcal,
+  stdDrinks,
 } from "@/lib/catalog";
 import { getDb } from "@/lib/db";
 import { events, products, settings, type EventRow } from "@/lib/schema";
@@ -36,6 +41,20 @@ export async function ensureSeed() {
       favoriteIds: DEFAULT_FAVORITES,
       drinkFavoriteIds: DEFAULT_DRINK_FAVORITES,
     }).onConflictDoNothing();
+  }
+  const currentSettings = (await db.select().from(settings).where(eq(settings.id, 1)).limit(1))[0];
+  if (currentSettings) {
+    const cigSame = JSON.stringify(currentSettings.favoriteIds) === JSON.stringify(PREV_DEFAULT_FAVORITES);
+    const drinkSame = JSON.stringify(currentSettings.drinkFavoriteIds) === JSON.stringify(PREV_DEFAULT_DRINK_FAVORITES);
+    if (cigSame || drinkSame) {
+      await db
+        .update(settings)
+        .set({
+          favoriteIds: cigSame ? DEFAULT_FAVORITES : currentSettings.favoriteIds,
+          drinkFavoriteIds: drinkSame ? DEFAULT_DRINK_FAVORITES : currentSettings.drinkFavoriteIds,
+        })
+        .where(eq(settings.id, 1));
+    }
   }
   const existingProducts = await db.select({
     id: products.id,
@@ -108,21 +127,25 @@ export async function loadTracker(): Promise<TrackerPayload> {
 export async function logHit(input: {
   productId: string;
   timezone: string;
-  source: "shelf" | "picker";
+  source: "shelf" | "picker" | "bottle";
   city?: string;
 }) {
   const p = productById(input.productId);
   const now = new Date();
   const tz = input.timezone || "Asia/Kolkata";
   const z = getZonedParts(now, tz);
+  const bottle = input.source === "bottle";
   const qty = 1;
+  const volume = bottle && isSpiritPeg(p) ? 750 : p.volumeMl;
+  const std = bottle && p.abv && volume ? stdDrinks(volume, p.abv) : p.standardDrinks;
+  const cal = bottle && p.abv && volume ? spiritKcal(volume, p.abv) : p.calories;
   const db = getDb();
   const inserted = await db
     .insert(events)
     .values({
       kind: p.kind,
       productId: p.id,
-      productName: p.name,
+      productName: bottle ? `${p.name} bottle` : p.name,
       brand: p.brand,
       variant: p.variant,
       manufacturer: p.manufacturer,
@@ -137,15 +160,15 @@ export async function logHit(input: {
       month: z.month,
       year: z.year,
       quantity: qty,
-      unitCostInr: displayCost(p),
+      unitCostInr: bottle ? p.packPrice : displayCost(p),
       nicotineMg: p.nicotineMg,
       tarMg: p.tarMg,
       coMg: p.coMg,
       lifeMinutes: p.kind === "cig" ? LIFE_MIN_PER_CIG * qty : 0,
       abv: p.abv,
-      volumeMl: p.volumeMl,
-      standardDrinks: p.standardDrinks,
-      calories: p.calories,
+      volumeMl: volume,
+      standardDrinks: std,
+      calories: cal,
       source: input.source,
       packPriceInr: p.packPrice,
       unitsPerPack: p.unitsPerPack,

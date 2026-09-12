@@ -91,9 +91,13 @@ function stdDrinks(ml: number, abv: number) {
   return Math.round((grams / 10) * 10) / 10;
 }
 
+export { stdDrinks };
+
 function spiritKcal(ml: number, abv: number) {
   return Math.round(ml * (abv / 100) * 0.789 * 7);
 }
+
+export { spiritKcal };
 
 function drink(p: {
   id: string;
@@ -204,7 +208,7 @@ export const CATALOG: ProductDef[] = [
     mm: 97,
     strength: "mild",
     flavor: "virginia",
-    fact: "97mm slims, not 84mm kings. Softer draw than Milds.",
+    fact: "97mm slims. 20s ₹360 → ₹18 a stick. Not a king-size Classic.",
     band: "#5b3d8a",
   }),
   cig({
@@ -349,12 +353,30 @@ export const CATALOG: ProductDef[] = [
     body: "#e4c45c",
   }),
   cig({
+    id: "gold-flake-indie-mint",
+    name: "Gold Flake Indie Mint",
+    brand: "Gold Flake",
+    variant: "Indie Mint 10s",
+    manufacturer: "ITC",
+    pack: 100,
+    units: 10,
+    tar: 9,
+    nic: 0.7,
+    co: 9,
+    mm: 69,
+    strength: "mint",
+    flavor: "mint",
+    fact: "69mm mint 10s. KA shops ₹100 pack, ₹10 a stick.",
+    band: "#2a8f8a",
+    body: "#d8efe8",
+  }),
+  cig({
     id: "marlboro-red",
     name: "Marlboro Red",
     brand: "Marlboro",
     variant: "Red kings 10s",
     manufacturer: "Godfrey Phillips / PMI",
-    pack: 240,
+    pack: 250,
     units: 10,
     tar: 12,
     nic: 1.0,
@@ -362,7 +384,7 @@ export const CATALOG: ProductDef[] = [
     mm: 84,
     strength: "full",
     flavor: "american blend",
-    fact: "Full flavour American blend. Metro 10s ₹240; paan shops often round a single to ₹25.",
+    fact: "Logged at ₹25 a stick — the shop single, not the ₹24 pack math.",
     band: "#c8102e",
   }),
   cig({
@@ -388,7 +410,7 @@ export const CATALOG: ProductDef[] = [
     brand: "Marlboro",
     variant: "Advance 10s",
     manufacturer: "Godfrey Phillips / PMI",
-    pack: 240,
+    pack: 250,
     units: 10,
     tar: 9,
     nic: 0.8,
@@ -396,7 +418,25 @@ export const CATALOG: ProductDef[] = [
     mm: 84,
     strength: "medium",
     flavor: "american blend",
-    fact: "India black-pack kings. Same 10s MRP band; shops often ₹25 a stick.",
+    fact: "Black-pack 84mm kings. Logged at ₹25 a stick.",
+    band: "#c9a227",
+    body: "#1c1c1c",
+  }),
+  cig({
+    id: "marlboro-compact",
+    name: "Marlboro Compact",
+    brand: "Marlboro",
+    variant: "Advance Compact 10s",
+    manufacturer: "Godfrey Phillips / PMI",
+    pack: 115,
+    units: 10,
+    tar: 8,
+    nic: 0.6,
+    co: 8,
+    mm: 69,
+    strength: "medium",
+    flavor: "american blend",
+    fact: "69mm Compact, not the ₹25 kings. Flipkart/Zepto 10s ₹115 after the Feb 2026 hike.",
     band: "#c9a227",
     body: "#1c1c1c",
   }),
@@ -939,6 +979,23 @@ export const CATALOG: ProductDef[] = [
     band: "#c9a227",
   }),
   drink({
+    id: "budweiser-magnum",
+    name: "Budweiser Magnum",
+    brand: "Budweiser",
+    variant: "650ml strong",
+    manufacturer: "AB InBev",
+    pack: 195,
+    units: 1,
+    unitName: "bottle",
+    abv: 6.5,
+    volumeMl: 650,
+    calories: 320,
+    fact: "The strong 650. KSBC 2026 ₹195. Tap logs the bottle, not a peg.",
+    artKey: "beer",
+    body: "#6b1520",
+    band: "#c9a227",
+  }),
+  drink({
     id: "heineken",
     name: "Heineken",
     brand: "Heineken",
@@ -1081,6 +1138,31 @@ export const CATALOG: ProductDef[] = [
     band: "#c9a227",
   }),
   spirit({
+    id: "jameson",
+    name: "Jameson",
+    brand: "Jameson",
+    variant: "30ml peg",
+    manufacturer: "Pernod Ricard / Irish Distillers",
+    bottle: 2900,
+    abv: 40,
+    fact: "BLR MRP ₹2,900/750. Tap a peg; log the bottle from more if you bought one.",
+    body: "#2c4a28",
+    band: "#c9a227",
+  }),
+  spirit({
+    id: "bombay-sapphire",
+    name: "Bombay Sapphire",
+    brand: "Bombay Sapphire",
+    variant: "30ml peg",
+    manufacturer: "Bacardi",
+    bottle: 3100,
+    abv: 47,
+    fact: "KSBC 750 ₹3,100. 47% London dry. Tap a peg.",
+    body: "#c5d4e8",
+    band: "#1c4a8c",
+    artKey: "clear",
+  }),
+  spirit({
     id: "signature",
     name: "Signature",
     brand: "Signature",
@@ -1187,8 +1269,16 @@ export const ART_SRC: Record<ArtKey, string> = {
   clear: "/products/serve-clear.png",
 };
 
-export const DEFAULT_FAVORITES = ["marlboro-red", "marlboro-advance", "classic-milds"];
-export const DEFAULT_DRINK_FAVORITES = ["old-monk", "kingfisher-premium", "royal-stag"];
+export const DEFAULT_FAVORITES = [
+  "marlboro-advance",
+  "classic-connect",
+  "gold-flake-indie-mint",
+  "marlboro-compact",
+  "marlboro-red",
+];
+export const DEFAULT_DRINK_FAVORITES = ["jameson", "bombay-sapphire", "budweiser-magnum"];
+export const PREV_DEFAULT_FAVORITES = ["marlboro-red", "marlboro-advance", "classic-milds"];
+export const PREV_DEFAULT_DRINK_FAVORITES = ["old-monk", "kingfisher-premium", "royal-stag"];
 export const LIFE_MIN_PER_CIG = 20;
 export const PRICE_REGION = "Karnataka / metro India, Sep 2026";
 
@@ -1214,10 +1304,14 @@ export function servingLabel(p: ProductDef): string {
     return `₹${shown} / stick · ${p.unitsPerPack}s ₹${p.packPrice}`;
   }
   if (p.unitName === "peg") {
-    return `₹${shown} / 30ml peg · 750ml ₹${p.packPrice}`;
+    return `₹${shown} / 30ml peg · bottle ₹${p.packPrice}`;
   }
   if (p.unitName === "glass") {
     return `₹${shown} / 150ml · bottle ₹${p.packPrice}`;
   }
   return `₹${shown} / ${p.unitName}`;
+}
+
+export function isSpiritPeg(p: ProductDef) {
+  return p.kind === "drink" && p.unitName === "peg";
 }

@@ -17,6 +17,7 @@ import {
   productById,
   servingLabel,
   displayCost,
+  isSpiritPeg,
   type Kind,
   type ProductDef,
   type ViewKind,
@@ -75,7 +76,7 @@ export default function Tracker({ initial }: { initial: TrackerPayload }) {
   );
   const visible = view === "all" ? sorted : sorted.filter((e) => e.kind === view);
 
-  async function handleLog(id: string, source: "shelf" | "picker") {
+  async function handleLog(id: string, source: "shelf" | "picker" | "bottle") {
     const product = productById(id);
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     setPicker(null);
@@ -331,7 +332,7 @@ export default function Tracker({ initial }: { initial: TrackerPayload }) {
         {picker && (
           <Picker
             catalog={catalog}
-            onPick={(id) => handleLog(id, "picker")}
+            onPick={(id, source = "picker") => handleLog(id, source)}
             onClose={() => setPicker(null)}
             favs={picker === "cig" ? favorites : drinkFavorites}
             toggleFav={(id) => toggleFav(id, picker)}
@@ -632,7 +633,7 @@ function Picker({
   toggleFav,
 }: {
   catalog: ProductDef[];
-  onPick: (id: string) => void;
+  onPick: (id: string, source?: "picker" | "bottle") => void;
   onClose: () => void;
   favs: string[];
   toggleFav: (id: string) => void;
@@ -671,16 +672,27 @@ function Picker({
           placeholder="Search brand"
           className="w-full h-11 rounded-[12px] bg-paper px-3 text-sm mb-3 outline-none"
         />
+        <p className="text-[11px] text-ink-3 mb-2">Spirits log a 30ml peg. Use bottle if you bought the 750.</p>
         <ul className="flex flex-col">
           {list.map((p) => (
-            <li key={p.id} className="flex items-center gap-3 py-2.5 border-b border-line">
-              <Pressable onClick={() => onPick(p.id)} className="flex items-center gap-3 min-w-0 flex-1 text-left">
+            <li key={p.id} className="flex items-center gap-2 py-2.5 border-b border-line">
+              <Pressable onClick={() => onPick(p.id, "picker")} className="flex items-center gap-3 min-w-0 flex-1 text-left">
                 <ProductShot product={p} size="sm" />
                 <span className="min-w-0">
                   <span className="block text-sm font-medium truncate">{p.name}</span>
                   <span className="block text-[11px] text-ink-3 truncate">{servingLabel(p)}</span>
                 </span>
               </Pressable>
+              {isSpiritPeg(p) && (
+                <Pressable
+                  onClick={() => onPick(p.id, "bottle")}
+                  className="px-2 py-2 rounded-[12px] bg-paper text-[10px] text-ink-2 shrink-0"
+                  aria-label={`Log bought ${p.name} bottle`}
+                >
+                  bottle
+                  <span className="block tabular">{fmtINR(p.packPrice)}</span>
+                </Pressable>
+              )}
               <Pressable
                 onClick={() => toggleFav(p.id)}
                 className="size-10 flex items-center justify-center text-ink-3 aria-pressed:text-ink"

@@ -81,7 +81,8 @@ const EMPTY_PARTS = { night: 0, morning: 0, afternoon: 0, evening: 0, late: 0 };
 
 export function analyze(events: EventRow[], now = Date.now()): Analytics {
   const cigs = events.filter((e) => e.kind === "cig");
-  const drinks = events.filter((e) => e.kind === "drink");
+  const drinks = events.filter((e) => e.kind === "drink" && e.source !== "bottle");
+  const drinkSpendRows = events.filter((e) => e.kind === "drink");
   const today0 = startOfDay(now);
   const week0 = today0 - 6 * 86400000;
   const monthStart = (() => {
@@ -111,7 +112,7 @@ export function analyze(events: EventRow[], now = Date.now()): Analytics {
     const key = String(e.localDate);
     if (!calendar[key]) calendar[key] = { cigs: 0, drinks: 0, spend: 0 };
     if (e.kind === "cig") calendar[key].cigs += e.quantity;
-    else calendar[key].drinks += e.quantity;
+    else if (e.source !== "bottle") calendar[key].drinks += e.quantity;
     calendar[key].spend += e.unitCostInr * e.quantity;
   }
 
@@ -141,11 +142,11 @@ export function analyze(events: EventRow[], now = Date.now()): Analytics {
     allCigs: sumQty(cigs),
     allDrinks: sumQty(drinks),
     spentTodayCig: sumCost(todayCigs),
-    spentTodayDrink: sumCost(todayDrinks),
+    spentTodayDrink: sumCost(inRange(drinkSpendRows, today0)),
     spentMonthCig: sumCost(monthCigs),
-    spentMonthDrink: sumCost(monthDrinks),
+    spentMonthDrink: sumCost(inRange(drinkSpendRows, monthStart)),
     spentAllCig: sumCost(cigs),
-    spentAllDrink: sumCost(drinks),
+    spentAllDrink: sumCost(drinkSpendRows),
     nicToday: todayCigs.reduce((s, e) => s + (e.nicotineMg ?? 0) * e.quantity, 0),
     tarToday: todayCigs.reduce((s, e) => s + (e.tarMg ?? 0) * e.quantity, 0),
     nicAll: cigs.reduce((s, e) => s + (e.nicotineMg ?? 0) * e.quantity, 0),
@@ -182,8 +183,8 @@ export function analyze(events: EventRow[], now = Date.now()): Analytics {
     weekdayHistDrink: weekdayHist(drinks),
     dayPartCig: parts(cigs),
     dayPartDrink: parts(drinks),
-    brandCig: brands(cigs),
-    brandDrink: brands(drinks),
+    brandCig: named(cigs, "brand"),
+    brandDrink: named(drinks, "brand", drinkSpendRows),
     brandByWeekdayCig: brandWeekday(cigs),
     brandByWeekdayDrink: brandWeekday(drinks),
     spendByDay,
@@ -193,12 +194,12 @@ export function analyze(events: EventRow[], now = Date.now()): Analytics {
     avgCigsOnSmokeDays: smokeDays.length ? smokeDays.reduce((s, d) => s + d.cigs, 0) / smokeDays.length : null,
     avgDrinksOnDrinkDays: drinkDays.length ? drinkDays.reduce((s, d) => s + d.drinks, 0) / drinkDays.length : null,
     skuCig: named(cigs, "productName"),
-    skuDrink: named(drinks, "productName"),
+    skuDrink: named(drinks, "productName", drinkSpendRows),
     gapDrinkAll: avgGapMins(drinks.map((e) => new Date(e.loggedAt).getTime())),
     gapDrinkWeek: avgGapMins(weekDrinks.map((e) => new Date(e.loggedAt).getTime())),
     places: named(events, "city"),
     sourceCig: sources(cigs),
-    sourceDrink: sources(drinks),
+    sourceDrink: sources(drinkSpendRows),
   };
 }
 
@@ -247,16 +248,25 @@ function brands(rows: EventRow[]): BrandStat[] {
   return named(rows, "brand");
 }
 
-function named(rows: EventRow[], key: "brand" | "productName" | "city"): BrandStat[] {
+function named(
+  countRows: EventRow[],
+  key: "brand" | "productName" | "city",
+  spendRows: EventRow[] = countRows,
+): BrandStat[] {
   const map = new Map<string, BrandStat>();
-  for (const e of rows) {
+  for (const e of countRows) {
     const label = (e[key] || "—") as string;
     const cur = map.get(label) ?? { name: label, count: 0, spend: 0 };
     cur.count += e.quantity;
+    map.set(label, cur);
+  }
+  for (const e of spendRows) {
+    const label = (e[key] || "—") as string;
+    const cur = map.get(label) ?? { name: label, count: 0, spend: 0 };
     cur.spend += e.unitCostInr * e.quantity;
     map.set(label, cur);
   }
-  return [...map.values()].sort((a, b) => b.count - a.count);
+  return [...map.values()].sort((a, b) => b.count - a.count || b.spend - a.spend);
 }
 
 function sources(rows: EventRow[]): Record<string, number> {
