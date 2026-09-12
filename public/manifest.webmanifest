@@ -1,0 +1,10 @@
+{
+  "name": "Ashtray",
+  "short_name": "Ashtray",
+  "description": "Cigarette and alcohol ledger — time, frequency, cost, nicotine.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
