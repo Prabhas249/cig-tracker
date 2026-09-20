@@ -263,6 +263,24 @@ export const CATALOG: ProductDef[] = [
     band: "#2a8f8a",
   }),
   cig({
+    id: "classic-double-burst",
+    name: "Classic Double Burst",
+    brand: "Classic",
+    variant: "Double Burst 20s",
+    manufacturer: "ITC",
+    pack: 500,
+    units: 20,
+    tar: 8,
+    nic: 0.6,
+    co: 8,
+    mm: 84,
+    strength: "menthol",
+    flavor: "dual capsule",
+    fact: "Two crush beads. Shop single ₹25 — same stick as Advance and Red.",
+    band: "#2a8f8a",
+    body: "#d8efe8",
+  }),
+  cig({
     id: "gold-flake-kings",
     name: "Gold Flake Kings",
     brand: "Gold Flake",
@@ -474,6 +492,24 @@ export const CATALOG: ProductDef[] = [
     flavor: "menthol",
     fact: "Always-on menthol. Rare legal SKU; last listed ₹500/20.",
     band: "#2f6b5a",
+    body: "#111111",
+  }),
+  cig({
+    id: "marlboro-double-switch",
+    name: "Marlboro Double Switch",
+    brand: "Marlboro",
+    variant: "Fuse Beyond 20s",
+    manufacturer: "Godfrey Phillips / PMI",
+    pack: 480,
+    units: 20,
+    tar: 6,
+    nic: 0.5,
+    co: 8,
+    mm: 84,
+    strength: "menthol",
+    flavor: "dual capsule",
+    fact: "Fuse Beyond / Double Switch. 20s ₹480 → ₹24. Two crush beads, not Advance kings.",
+    band: "#3aa8c5",
     body: "#111111",
   }),
   cig({
@@ -785,6 +821,24 @@ export const CATALOG: ProductDef[] = [
     flavor: "virginia",
     fact: "Duty-free / import. Not regular domestic distribution.",
     band: "#8a6a2a",
+  }),
+  cig({
+    id: "dunhill-international",
+    name: "Dunhill International",
+    brand: "Dunhill",
+    variant: "International 20s",
+    manufacturer: "BAT",
+    pack: 680,
+    units: 20,
+    tar: 11,
+    nic: 0.9,
+    co: 10,
+    mm: 100,
+    strength: "full",
+    flavor: "virginia oriental",
+    fact: "Long 100mm luxury. Blinkit Feb 2026 ₹680/20 → ₹34 a stick.",
+    band: "#8a6a2a",
+    body: "#1c120c",
   }),
   cig({
     id: "davidoff",
@@ -1269,15 +1323,16 @@ export const ART_SRC: Record<ArtKey, string> = {
   clear: "/products/serve-clear.png",
 };
 
-export const DEFAULT_FAVORITES = [
+export const DEFAULT_FAVORITES = ["marlboro-advance", "marlboro-red", "marlboro-double-switch"];
+export const DEFAULT_DRINK_FAVORITES = ["jameson", "bombay-sapphire", "budweiser-magnum"];
+export const PREV_DEFAULT_FAVORITES = ["marlboro-red", "marlboro-advance", "classic-milds"];
+export const PREV_SHIPPED_FAVORITES = [
   "marlboro-advance",
   "classic-connect",
   "gold-flake-indie-mint",
   "marlboro-compact",
   "marlboro-red",
 ];
-export const DEFAULT_DRINK_FAVORITES = ["jameson", "bombay-sapphire", "budweiser-magnum"];
-export const PREV_DEFAULT_FAVORITES = ["marlboro-red", "marlboro-advance", "classic-milds"];
 export const PREV_DEFAULT_DRINK_FAVORITES = ["old-monk", "kingfisher-premium", "royal-stag"];
 export const LIFE_MIN_PER_CIG = 20;
 export const PRICE_REGION = "Karnataka / metro India, Sep 2026";

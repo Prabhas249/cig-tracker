@@ -9,6 +9,7 @@ import {
   LIFE_MIN_PER_CIG,
   PREV_DEFAULT_DRINK_FAVORITES,
   PREV_DEFAULT_FAVORITES,
+  PREV_SHIPPED_FAVORITES,
   displayCost,
   isSpiritPeg,
   productById,
@@ -44,7 +45,9 @@ export async function ensureSeed() {
   }
   const currentSettings = (await db.select().from(settings).where(eq(settings.id, 1)).limit(1))[0];
   if (currentSettings) {
-    const cigSame = JSON.stringify(currentSettings.favoriteIds) === JSON.stringify(PREV_DEFAULT_FAVORITES);
+    const cigSame =
+      JSON.stringify(currentSettings.favoriteIds) === JSON.stringify(PREV_DEFAULT_FAVORITES) ||
+      JSON.stringify(currentSettings.favoriteIds) === JSON.stringify(PREV_SHIPPED_FAVORITES);
     const drinkSame = JSON.stringify(currentSettings.drinkFavoriteIds) === JSON.stringify(PREV_DEFAULT_DRINK_FAVORITES);
     if (cigSame || drinkSame) {
       await db
@@ -63,12 +66,15 @@ export async function ensureSeed() {
   }).from(products);
   const red = productById("marlboro-red");
   const monk = productById("old-monk");
+  const burst = productById("classic-double-burst");
   const priced = existingProducts.find((r) => r.id === "marlboro-red");
   const monkRow = existingProducts.find((r) => r.id === "old-monk");
+  const burstRow = existingProducts.find((r) => r.id === "classic-double-burst");
   if (
     existingProducts.length >= CATALOG.length &&
     priced?.packPrice === red.packPrice &&
-    monkRow?.standardDrinks === monk.standardDrinks
+    monkRow?.standardDrinks === monk.standardDrinks &&
+    burstRow?.packPrice === burst.packPrice
   ) return;
   await db
     .insert(products)
