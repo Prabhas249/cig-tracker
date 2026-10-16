@@ -1,0 +1,52 @@
+{
+  "camel": {
+    "height": 1000,
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Camel_cigarette_pack_(softpack)_on_white_background_(cropped_V2).jpg",
+    "width": 794
+  },
+  "charminar": {
+    "height": 700,
+    "sourceUrl": "https://tpackss.globaltobaccocontrol.org/pack-search/pack/6731/charminar-india-w1-01",
+    "width": 520
+  },
+  "classic-milds": {
+    "height": 1000,
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Classic_Mild_pack_of_20_back.JPG",
+    "width": 693
+  },
+  "four-square": {
+    "height": 700,
+    "sourceUrl": "https://tpackss.globaltobaccocontrol.org/pack-search/pack/6780/four-square-india-w1-01",
+    "width": 520
+  },
+  "gold-flake-kings": {
+    "height": 1000,
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Gold_Flake.JPG",
+    "width": 605
+  },
+  "gold-flake-lights": {
+    "height": 700,
+    "sourceUrl": "https://tpackss.globaltobaccocontrol.org/pack-search/pack/6745/gold-flake-india-w1-04",
+    "width": 520
+  },
+  "marlboro-advance": {
+    "height": 700,
+    "sourceUrl": "https://tpackss.globaltobaccocontrol.org/pack-search/pack/6755/marlboro-india-w1-02",
+    "width": 520
+  },
+  "marlboro-gold": {
+    "height": 700,
+    "sourceUrl": "https://tpackss.globaltobaccocontrol.org/pack-search/pack/6793/marlboro-india-w1-04",
+    "width": 520
+  },
+  "marlboro-red": {
+    "height": 1000,
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Marlboro_cigarette_pack_(2010)_from_US_duty-free_shop_without_any_warnings_etc._(edited,_white_background).jpg",
+    "width": 727
+  },
+  "wills-navy-cut": {
+    "height": 1000,
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Wills_Navy_Cut_back.JPG",
+    "width": 630
+  }
+}

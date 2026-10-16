@@ -3,10 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --hostname 0.0.0.0",
     "build": "next build",
-    "start": "next start",
-    "db:push": "dotenv -e .env.local -- drizzle-kit push"
+    "start": "next start --hostname 0.0.0.0",
+    "db:push": "dotenv -e .env.local -- drizzle-kit push",
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/test-social.mjs && node scripts/test-sync-client.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
@@ -26,5 +28,8 @@
     "drizzle-kit": "^0.31.10",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=22.13.0"
   }
 }
