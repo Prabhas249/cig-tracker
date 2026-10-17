@@ -1,6 +1,6 @@
 # Ashtray
 
-A local, multi-user cigarette and drink tracker with a private friend circle, actual paid prices, sourced Indian pack-price references, and the original mobile 3D interface.
+A multi-user cigarette and drink tracker with a private friend circle, actual paid prices, sourced Indian pack-price references, and the original mobile 3D interface. Vercel uses durable Neon storage; local development can use SQLite.
 
 ## Run locally
 
@@ -37,13 +37,25 @@ An authenticated server-sent event connection checks permitted revisions every t
 
 Check-ins use unique request IDs to make uncertain network retries safe. A delayed refresh cannot overwrite a successful save. If a response is lost after the server saved a check-in, reconciliation confirms the saved entry and clears the retry message. Offline check-ins require reconnection before saving.
 
-Persistent state lives in `data/ashtray.sqlite` with SQLite WAL files. This directory is ignored by Git. Back up the database using SQLite's backup API or stop the server before copying the whole `data/` directory. Restarting the app does not clear accounts.
+Local state lives in `data/ashtray.sqlite` with SQLite WAL files. This directory is excluded from Git and Vercel uploads. Back up the database using SQLite's backup API or stop the server before copying the whole `data/` directory. Restarting the local app does not clear accounts.
+
+On Vercel, accounts, hashed sessions, logs, friendships, retry keys and revision counters live in the separate `ashtray` schema of the configured Neon database. Every request uses an authenticated owner scope; no local filesystem is used for hosted account storage. Deploying a new app version does not clear hosted accounts.
 
 ## Hosting and Git pushes
 
 Git contains the app source and assets. Account databases, sessions, passwords, local credentials and screenshots are excluded. A push does not upload or move saved accounts and logs.
 
-This storage version needs one long-running Node 22.13+ server with a persistent, writable `data/` directory. Keep that directory across releases and backups. [Ordinary Vercel Functions do not provide a shared permanent filesystem](https://vercel.com/kb/guide/is-sqlite-supported-in-vercel), so this SQLite version needs a persistent-disk host or a shared database adapter before it can replace a Vercel production deployment. The original Neon history remains available separately through the explicit legacy import workflow below.
+Vercel uses the durable cloud adapter automatically; it never falls back to SQLite. Configure `DATABASE_URL` as a sensitive environment variable for Production and Preview, and set `ASHTRAY_STORAGE=neon`. Run the explicit, idempotent schema setup once before deployment:
+
+```sh
+node --env-file=/secure/path/cloud.env scripts/setup-cloud.mjs --apply
+ASHTRAY_CLOUD_TEST=1 node --env-file=/secure/path/cloud.env scripts/test-cloud-social.mjs
+vercel --prod
+```
+
+The setup creates only the isolated `ashtray` schema. It does not modify the original `public.events`, products or settings. Database migrations never run automatically in web requests. Cloud tests create uniquely named QA accounts and remove only their own fixtures.
+
+Cloud writes use PostgreSQL transactions, durable attempt limits and idempotency keys. Each snapshot is read atomically. Server-sent event connections recheck authenticated revisions without loading event bodies, and reconnect before Vercel's configured request duration ends. The original shared history remains preserved separately; assigning it to an account requires choosing its owner explicitly.
 
 ## Prices and calculations
 

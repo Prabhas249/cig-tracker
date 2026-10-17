@@ -1,8 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { getLocalStore, StoreError } from "@/lib/local-store";
+import { getTrackerStore, StoreError } from "@/lib/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 30;
 const SESSION_COOKIE = "ashtray_session";
 const MAX_BODY_BYTES = 32 * 1024;
 
@@ -20,7 +21,7 @@ function failure(error: unknown): NextResponse {
     if (error.status === 429) response.headers.set("Retry-After", "900");
     return response;
   }
-  console.error("Tracker storage request failed:", error instanceof Error ? error.message : "Unknown storage error");
+  console.error("Tracker storage request failed.");
   return json({ error: "Could not save your changes. Please try again." }, 500);
 }
 
@@ -46,7 +47,7 @@ async function readBody(request: NextRequest): Promise<string> {
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
-  try { return json(getLocalStore().state(request.cookies.get(SESSION_COOKIE)?.value)); }
+  try { return json(await (await getTrackerStore()).state(request.cookies.get(SESSION_COOKIE)?.value)); }
   catch (error) { return failure(error); }
 }
 
@@ -70,7 +71,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     let input: unknown;
     try { input = JSON.parse(body); } catch { throw new StoreError("That request contains invalid JSON."); }
     if (!input || typeof input !== "object" || Array.isArray(input)) throw new StoreError("Choose a valid action.");
-    const result = await getLocalStore().mutate(input as Record<string, unknown>, request.cookies.get(SESSION_COOKIE)?.value);
+    const result = await (await getTrackerStore()).mutate(input as Record<string, unknown>, request.cookies.get(SESSION_COOKIE)?.value);
     const response = json(result.state);
     if (result.sessionToken || result.clearSession) {
       response.cookies.set(SESSION_COOKIE, result.sessionToken ?? "", {

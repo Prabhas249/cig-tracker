@@ -7,8 +7,10 @@
     "build": "next build",
     "start": "next start --hostname 0.0.0.0",
     "db:push": "dotenv -e .env.local -- drizzle-kit push",
+    "db:setup:cloud": "node scripts/setup-cloud.mjs --apply",
     "typecheck": "tsc --noEmit",
-    "test": "node scripts/test-social.mjs && node scripts/test-sync-client.mjs"
+    "test": "node scripts/test-social.mjs && node scripts/test-sync-client.mjs",
+    "test:cloud": "node scripts/test-cloud-social.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

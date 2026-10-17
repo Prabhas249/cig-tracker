@@ -1,14 +1,16 @@
 import { createHash } from "node:crypto";
 import { type NextRequest } from "next/server";
-import { getLocalStore } from "@/lib/local-store";
+import { getTrackerStore } from "@/lib/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 const runtimeState = globalThis as typeof globalThis & { __ashtraySyncConnections?: Map<string, number> };
 const connections = runtimeState.__ashtraySyncConnections ??= new Map<string, number>();
 const POLL_MS = 2000;
 const HEARTBEAT_MS = 15000;
+const STREAM_LIFETIME_MS = process.env.VERCEL === "1" ? 55_000 : 0;
 
 function error(message: string, status: number): Response {
   return Response.json({ error: message }, { status, headers: {
@@ -19,6 +21,7 @@ function error(message: string, status: number): Response {
 
 /** Invalidations only: all actual data still passes /api/tracker authorization. */
 export async function GET(request: NextRequest): Promise<Response> {
+  const startedAt = Date.now();
   const origin = request.headers.get("origin");
   const host = request.headers.get("host") ?? new URL(request.url).host;
   let expectedOrigin = "";
@@ -28,7 +31,8 @@ export async function GET(request: NextRequest): Promise<Response> {
   }
   const token = request.cookies.get("ashtray_session")?.value;
   let initialRevision: string | null;
-  try { initialRevision = getLocalStore().syncRevision(token); }
+  let store: Awaited<ReturnType<typeof getTrackerStore>>;
+  try { store = await getTrackerStore(); initialRevision = await store.syncRevision(token); }
   catch { return error("Sync is temporarily unavailable. Please reconnect.", 503); }
   if (!initialRevision || !token) return error("Sign in to sync your tracker.", 401);
 
@@ -38,7 +42,8 @@ export async function GET(request: NextRequest): Promise<Response> {
   connections.set(key, (connections.get(key) ?? 0) + 1);
 
   const encoder = new TextEncoder();
-  let timer: ReturnType<typeof setInterval> | undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let lifetime: ReturnType<typeof setTimeout> | undefined;
   let closed = false;
   let release: () => void = () => {};
   const stream = new ReadableStream<Uint8Array>({
@@ -48,7 +53,8 @@ export async function GET(request: NextRequest): Promise<Response> {
       release = () => {
         if (closed) return;
         closed = true;
-        if (timer) clearInterval(timer);
+        if (timer) clearTimeout(timer);
+        if (lifetime) clearTimeout(lifetime);
         request.signal.removeEventListener("abort", release);
         const count = (connections.get(key) ?? 1) - 1;
         if (count <= 0) connections.delete(key); else connections.set(key, count);
@@ -65,10 +71,11 @@ export async function GET(request: NextRequest): Promise<Response> {
       // current revision always restart this account's stream safely.
       controller.enqueue(encoder.encode("retry: 4000\n\n"));
       send("revision", { revision: initialRevision }, initialRevision);
-      timer = setInterval(() => {
+      const poll = async () => {
         if (closed) return;
         try {
-          const revision = getLocalStore().syncRevision(token);
+          const revision = await store.syncRevision(token);
+          if (closed) return;
           if (!revision) {
             send("auth", { authenticated: false });
             release();
@@ -76,12 +83,11 @@ export async function GET(request: NextRequest): Promise<Response> {
           }
           // A stalled client gets only the latest invalidation, never an
           // unbounded queue of events or heartbeat frames.
-          if ((controller.desiredSize ?? 0) <= 0) return;
-          if (revision !== lastRevision) {
+          if ((controller.desiredSize ?? 0) > 0 && revision !== lastRevision) {
             send("revision", { revision }, revision);
             lastRevision = revision;
             lastHeartbeat = Date.now();
-          } else if (Date.now() - lastHeartbeat >= HEARTBEAT_MS) {
+          } else if ((controller.desiredSize ?? 0) > 0 && Date.now() - lastHeartbeat >= HEARTBEAT_MS) {
             controller.enqueue(encoder.encode(": heartbeat\n\n"));
             lastHeartbeat = Date.now();
           }
@@ -89,9 +95,13 @@ export async function GET(request: NextRequest): Promise<Response> {
           // EventSource reconnects using the retry interval. No storage details
           // or private data are ever emitted as stream error payloads.
           release();
+        } finally {
+          if (!closed) { timer = setTimeout(poll, POLL_MS); timer.unref?.(); }
         }
-      }, POLL_MS);
+      };
+      timer = setTimeout(poll, POLL_MS);
       timer.unref?.();
+      if (STREAM_LIFETIME_MS) { lifetime = setTimeout(release, Math.max(0, STREAM_LIFETIME_MS - (Date.now() - startedAt))); lifetime.unref?.(); }
     },
     cancel() { release(); },
   });

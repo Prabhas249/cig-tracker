@@ -6,6 +6,8 @@ import { CATALOG, DEFAULT_FAVORITES, displayCost, isSpiritPeg, spiritKcal, stdDr
 import { suggestedLoosePrice } from "./pricing";
 import { cityFromTimezone, dayPart, getZonedParts } from "./time";
 import type { FriendRequest, FriendSummary, SocialEvent, TrackerState, User } from "./social-types";
+import { StoreError } from "./store-common";
+export { StoreError } from "./store-common";
 
 // Keep the sqlite interface local: the app also supports the bundled Node runtime,
 // whose version may be newer than the project's @types/node package.
@@ -24,13 +26,6 @@ const { DatabaseSync } = runtimeProcess.getBuiltinModule("node:sqlite") as { Dat
 const deriveKey = promisify(scrypt);
 const SESSION_MS = 14 * 24 * 60 * 60 * 1000;
 const EMPTY_STATE: TrackerState = { user: null, events: [], friends: [], requests: [], sentRequests: [] };
-
-export class StoreError extends Error {
-  constructor(message: string, public status = 400) {
-    super(message);
-    this.name = "StoreError";
-  }
-}
 
 type Input = Record<string, unknown>;
 export type MutationResult = { state: TrackerState; sessionToken?: string; clearSession?: boolean };

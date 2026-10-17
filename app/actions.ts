@@ -3,15 +3,15 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { CATALOG, DEFAULT_DRINK_FAVORITES, DEFAULT_FAVORITES } from "@/lib/catalog";
-import { getLocalStore, StoreError } from "@/lib/local-store";
+import { getTrackerStore, StoreError } from "@/lib/store";
 import type { ClientEvent, TrackerPayload } from "@/lib/types";
 
 // Compatibility for earlier tracker components. These functions now use exactly
-// the same authenticated, owner-scoped local store as /api/tracker.
+// the same authenticated, owner-scoped store as /api/tracker.
 async function context() {
   const token = (await cookies()).get("ashtray_session")?.value;
-  const store = getLocalStore();
-  const state = store.state(token);
+  const store = await getTrackerStore();
+  const state = await store.state(token);
   if (!state.user) throw new StoreError("Sign in to continue.", 401);
   return { token, store, state, user: state.user };
 }

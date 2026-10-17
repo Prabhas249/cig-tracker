@@ -15,11 +15,11 @@ const streams = [];
 const aborts = [];
 const originalDirectory = process.cwd();
 try {
-  for (const file of ["pricing", "catalog", "time", "local-store"]) {
+  for (const file of ["pricing", "catalog", "time", "store-common", "local-store", "store"]) {
     const source = await readFile(join(root, "lib", `${file}.ts`), "utf8");
     const output = ts.transpileModule(source, { compilerOptions: {
       target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext,
-    } }).outputText.replace(/from "\.\/(pricing|catalog|time)"/g, 'from "./$1.mjs"');
+    } }).outputText.replace(/from "\.\/([^\"]+)"/g, 'from "./$1.mjs"').replace(/import\("\.\/([^\"]+)"\)/g, 'import("./$1.mjs")');
     await writeFile(join(temp, `${file}.mjs`), output);
   }
   const { LocalStore, getLocalStore } = await import(pathToFileURL(join(temp, "local-store.mjs")));
@@ -228,7 +228,7 @@ try {
   const routeOutput = ts.transpileModule(routeSource, { compilerOptions: {
     target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext,
   } }).outputText.replace('from "next/server"', `from ${JSON.stringify(nextServer)}`)
-    .replace('from "@/lib/local-store"', 'from "./local-store.mjs"');
+    .replace('from "@/lib/store"', 'from "./store.mjs"');
   await writeFile(join(temp, "route.mjs"), routeOutput);
   const { NextRequest } = await import(nextServer);
   const route = await import(pathToFileURL(join(temp, "route.mjs")));
@@ -264,7 +264,7 @@ try {
   const syncSource = await readFile(join(root, "app", "api", "sync", "route.ts"), "utf8");
   const syncOutput = ts.transpileModule(syncSource, { compilerOptions: {
     target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext,
-  } }).outputText.replace('from "@/lib/local-store"', 'from "./local-store.mjs"');
+  } }).outputText.replace('from "@/lib/store"', 'from "./store.mjs"');
   await writeFile(join(temp, "sync-route.mjs"), syncOutput);
   const sync = await import(pathToFileURL(join(temp, "sync-route.mjs")));
   const syncGet = (cookie, abort, headers = {}) => sync.GET(new NextRequest(`${base}/api/sync`, {
