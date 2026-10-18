@@ -2,11 +2,11 @@ import { createHash, randomBytes, randomUUID, scrypt, timingSafeEqual } from "no
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { CATALOG, DEFAULT_FAVORITES, displayCost, isSpiritPeg, spiritKcal, stdDrinks } from "./catalog";
+import { CATALOG, DEFAULT_FAVORITES, DEFAULT_DRINK_FAVORITES, displayCost, isSpiritPeg, spiritKcal, stdDrinks } from "./catalog";
 import { suggestedLoosePrice } from "./pricing";
 import { cityFromTimezone, dayPart, getZonedParts } from "./time";
 import type { FriendRequest, FriendSummary, SocialEvent, TrackerState, User } from "./social-types";
-import { StoreError } from "./store-common";
+import { StoreError, assertFavoriteVersion, priceOverrideFor } from "./store-common";
 export { StoreError } from "./store-common";
 
 // Keep the sqlite interface local: the app also supports the bundled Node runtime,
@@ -354,7 +354,7 @@ export class LocalStore {
           inviteCode: `ASH-${randomBytes(6).toString("hex").toUpperCase()}`,
           timezone: "Asia/Kolkata", city: "", cigBaseline: 8, drinkBaseline: 2,
           dailyLimit: 8, defaultPrice: 25, sharing: "summary", priceOverrides: {},
-          favoriteIds: [...DEFAULT_FAVORITES], createdAt: new Date().toISOString(),
+          favoriteIds: [...DEFAULT_FAVORITES, ...DEFAULT_DRINK_FAVORITES], createdAt: new Date().toISOString(),
         };
         let sessionToken: string;
         try {
@@ -509,7 +509,9 @@ export class LocalStore {
           next.priceOverrides[id] = price(amount);
         }
       }
+      if (input.priceOverride !== undefined) next.priceOverrides = priceOverrideFor(next.priceOverrides, input.priceOverride);
       if (input.favoriteIds !== undefined) {
+        assertFavoriteVersion(current, input);
         if (!Array.isArray(input.favoriteIds) || input.favoriteIds.length > 12 || input.favoriteIds.some((id) => typeof id !== "string" || !CATALOG.some((product) => product.id === id))) {
           throw new StoreError("Choose up to 12 products from the catalog.");
         }

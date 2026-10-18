@@ -23,6 +23,8 @@ try {
     await writeFile(join(temp, `${file}.mjs`), output);
   }
   const { LocalStore, getLocalStore } = await import(pathToFileURL(join(temp, "local-store.mjs")));
+  const { DEFAULT_FAVORITES, DEFAULT_DRINK_FAVORITES } = await import(pathToFileURL(join(temp, "catalog.mjs")));
+  const { settingsFor } = await import(pathToFileURL(join(temp, "store-common.mjs")));
   const database = join(temp, "data");
   store = new LocalStore(database);
   const rejects = (action, status) => assert.rejects(action, (error) => error.status === status);
@@ -41,6 +43,39 @@ try {
   const login = await store.mutate({ action: "login", username: "ALICE", password: "alice-test-password" }, aliceToken);
   assert.equal(store.state(aliceToken).user, null, "Login rotates the prior session token");
   aliceToken = login.sessionToken;
+
+  // Favorites are one ordered, account-owned list. Empty is an intentional choice.
+  assert.deepEqual(a.state.user.favoriteIds, [...DEFAULT_FAVORITES, ...DEFAULT_DRINK_FAVORITES], "New accounts seed both shelves");
+  const bobFavorites = [...store.state(bobToken).user.favoriteIds];
+  const bobFavoriteRevision = store.syncRevision(bobToken);
+  const initialFavorites = [...store.state(aliceToken).user.favoriteIds];
+  const favoriteOrder = ["kingfisher-premium", "classic-milds", "marlboro-red"];
+  const favoriteRevision = store.syncRevision(aliceToken);
+  const favoriteSave = await store.mutate({ action: "settings", favoriteIds: [...favoriteOrder, "classic-milds"], expectedFavoriteIds: initialFavorites, userId: b.state.user.id }, aliceToken);
+  assert.deepEqual(favoriteSave.state.user.favoriteIds, favoriteOrder, "Duplicate IDs keep their first saved position");
+  assert.notEqual(favoriteSave.state.revision, favoriteRevision, "Saving favorites invalidates other devices signed into this account");
+  assert.deepEqual(store.state(bobToken).user.favoriteIds, bobFavorites, "An input user ID cannot change another account's favorites");
+  assert.equal(store.syncRevision(bobToken), bobFavoriteRevision, "Another account receives no favorite invalidation");
+  await assert.rejects(() => store.mutate({ action: "settings", favoriteIds: ["marlboro-red"], expectedFavoriteIds: initialFavorites, name: "Must not save" }, aliceToken), error => error.status === 409 && error.message === "Your favorites changed on another device. Reload your saved favorites and try again.");
+  assert.equal(store.state(aliceToken).user.name, "Alice", "A conflict cannot partially save unrelated settings");
+  assert.deepEqual(store.state(aliceToken).user.favoriteIds, favoriteOrder);
+  await rejects(() => store.mutate({ action: "settings", favoriteIds: [], expectedFavoriteIds: [...favoriteOrder].reverse() }, aliceToken), 409);
+  for (const invalid of [["not-in-catalog"], [42], Array(13).fill("marlboro-red")]) {
+    await rejects(() => store.mutate({ action: "settings", favoriteIds: invalid }, aliceToken), 400);
+  }
+  await rejects(() => store.mutate({ action: "settings", favoriteIds: [], expectedFavoriteIds: "invalid" }, aliceToken), 400);
+  await store.mutate({ action: "settings", favoriteIds: [], expectedFavoriteIds: favoriteOrder }, aliceToken);
+  const favoritePeer = new LocalStore(database);
+  try {
+    assert.deepEqual(favoritePeer.state(aliceToken).user.favoriteIds, [], "Another connection preserves an explicitly empty shelf");
+    const contenders = await Promise.allSettled([
+      store.mutate({ action: "settings", favoriteIds: ["marlboro-red"], expectedFavoriteIds: [] }, aliceToken),
+      favoritePeer.mutate({ action: "settings", favoriteIds: ["classic-milds"], expectedFavoriteIds: [] }, aliceToken),
+    ]);
+    assert.equal(contenders.filter(result => result.status === "fulfilled").length, 1, "Only one editor with the same original snapshot can save");
+    assert.equal(contenders.filter(result => result.status === "rejected" && result.reason.status === 409).length, 1);
+  } finally { favoritePeer.close(); }
+  await store.mutate({ action: "settings", favoriteIds: favoriteOrder }, aliceToken);
 
   const logInput = { action: "log", productId: "marlboro-red", quantity: 2, unitCostInr: 25, note: "Personal note", requestId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" };
   const bobBeforeLog = store.syncRevision(bobToken);
@@ -74,6 +109,30 @@ try {
   assert.equal(newer.state.events.find((entry) => entry.id !== entryId).unitCostInr, 27);
   assert.equal(newer.state.events.find((entry) => entry.id === entryId).unitCostInr, 25, "Changing prices preserves historic costs");
 
+  const originalBobPrices = { ...store.state(bobToken).user.priceOverrides };
+  const historicalPrices = store.state(aliceToken).events.map(event => [event.id, event.unitCostInr]);
+  await store.mutate({ action: "settings", priceOverride: { productId: "classic-milds", price: 29.5 }, userId: b.state.user.id }, aliceToken);
+  const pricePeer = new LocalStore(database);
+  try {
+    await pricePeer.mutate({ action: "settings", priceOverride: { productId: "kingfisher-premium", price: 188 } }, aliceToken);
+    assert.deepEqual(store.state(aliceToken).user.priceOverrides, { "marlboro-red": 27, "classic-milds": 29.5, "kingfisher-premium": 188 }, "Narrow updates from separate connections preserve each brand's saved price");
+    await store.mutate({ action: "settings", priceOverride: { productId: "classic-milds", price: null } }, aliceToken);
+    assert.deepEqual(pricePeer.state(aliceToken).user.priceOverrides, { "marlboro-red": 27, "kingfisher-premium": 188 }, "Reset removes only the requested brand");
+    await store.mutate({ action: "settings", priceOverride: { productId: "kingfisher-premium", price: 0 } }, aliceToken);
+    assert.equal(pricePeer.state(aliceToken).user.priceOverrides["kingfisher-premium"], 0, "A zero price is a saved override, distinct from reset");
+  } finally { pricePeer.close(); }
+  assert.deepEqual(store.state(bobToken).user.priceOverrides, originalBobPrices, "Prices are owned by the authenticated account");
+  assert.deepEqual(store.state(aliceToken).events.map(event => [event.id, event.unitCostInr]), historicalPrices, "Saving or resetting a usual price never rewrites historical costs");
+  for (const invalid of [{ productId: "unknown", price: 25 }, { productId: "marlboro-red", price: -1 }, { productId: "marlboro-red", price: 25.123 }, { productId: "marlboro-red" }, null]) {
+    await rejects(() => store.mutate({ action: "settings", priceOverride: invalid }, aliceToken), 400);
+  }
+  assert.deepEqual(store.state(aliceToken).user.priceOverrides, { "marlboro-red": 27, "kingfisher-premium": 0 }, "Invalid narrow updates leave the whole saved map intact");
+  const cloudProfile = store.state(aliceToken).user;
+  const cloudPatched = settingsFor(cloudProfile, { priceOverride: { productId: "classic-milds", price: 29.5 } });
+  assert.deepEqual(cloudPatched.priceOverrides, { "marlboro-red": 27, "kingfisher-premium": 0, "classic-milds": 29.5 }, "The cloud settings helper uses the same narrow merge");
+  assert.deepEqual(settingsFor(cloudPatched, { priceOverride: { productId: "classic-milds", price: null } }).priceOverrides, cloudProfile.priceOverrides);
+  assert.equal(cloudProfile.priceOverrides["classic-milds"], undefined, "The cloud helper never mutates its original profile");
+
   await rejects(() => store.mutate({ action: "request", code: a.state.user.inviteCode }, aliceToken), 400);
   await store.mutate({ action: "request", code: b.state.user.inviteCode.toLowerCase() }, aliceToken);
   const pendingRevision = store.syncRevision(bobToken);
@@ -93,6 +152,10 @@ try {
   assert.equal(JSON.stringify(connected.state.friends).includes("Personal note"), false);
   assert.equal(JSON.stringify(connected.state.friends).includes("inviteCode"), false);
   assert.equal(JSON.stringify(connected.state.friends).includes("requestId"), false);
+  assert.equal(JSON.stringify(connected.state.friends).includes("favoriteIds"), false, "Friends never receive another account's shelf preferences");
+  const connectedFavoritesRevision = store.syncRevision(bobToken);
+  await store.mutate({ action: "settings", favoriteIds: ["marlboro-red", "classic-milds"], expectedFavoriteIds: favoriteOrder }, aliceToken);
+  assert.equal(store.syncRevision(bobToken), connectedFavoritesRevision, "Accepted friends do not observe private favorite changes");
   let friendRevision = store.syncRevision(bobToken);
   const peerStore = new LocalStore(database);
   try {
@@ -123,6 +186,7 @@ try {
 
   store.close();
   store = new LocalStore(database);
+  assert.deepEqual(store.state(aliceToken).user.favoriteIds, ["marlboro-red", "classic-milds"], "Favorite order survives restart without reseeding an explicitly empty drink shelf");
   assert.equal(store.state(aliceToken).events.length, 2, "Entries survive reopening SQLite");
   assert.equal(store.state(bobToken).friends[0].stats.todayCigs, 3, "Sessions and connections survive restart");
   const { importSnapshot } = await import(pathToFileURL(join(root, "scripts", "import-legacy.mjs")));

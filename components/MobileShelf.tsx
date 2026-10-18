@@ -5,7 +5,8 @@ import { CATALOG, displayCost, type Kind, type ProductDef } from "@/lib/catalog"
 import { getPriceReference, suggestedLoosePrice, type PriceReference } from "@/lib/pricing";
 import type { User } from "@/lib/social-types";
 import { fmtINR } from "@/lib/time";
-import { CloseIcon, PlusIcon, StarIcon } from "./Icons";
+import { CloseIcon, PlusIcon } from "./Icons";
+import { ChevronRight, Star } from "lucide-react";
 import { ProductShot } from "./ProductShot";
 import "./mobile-shelf.css";
 import { objectOrigin, type ObjectOrigin } from "@/lib/object-origin";
@@ -16,7 +17,8 @@ type MobileShelfProps = {
   pending: boolean;
   onQuickLog: (id: string, origin?: ObjectOrigin) => void;
   onDetailedLog: (id: string) => void;
-  onFavorite: (id: string) => void;
+  onEditFavorites: () => void;
+  onEditUsualPrice: (id: string) => void;
 };
 
 function checkedDate(value: string) {
@@ -68,11 +70,12 @@ function PriceDetails({ product, reference }: { product: ProductDef; reference: 
   );
 }
 
-export function MobileShelf({ kind, user, pending, onQuickLog, onDetailedLog, onFavorite }: MobileShelfProps) {
+export function MobileShelf({ kind, user, pending, onQuickLog, onDetailedLog, onEditFavorites, onEditUsualPrice }: MobileShelfProps) {
   const [query, setQuery] = useState("");
   const searchId = useId();
   const helpId = useId();
   const searchRef = useRef<HTMLInputElement>(null);
+  const favorites = (user?.favoriteIds ?? []).map(id => CATALOG.find(product => product.id === id)).filter(product => product?.kind === kind);
   const products = useMemo(() => {
     const terms = query.trim().toLocaleLowerCase("en-IN").split(/\s+/).filter(Boolean);
     return CATALOG.filter((product) => {
@@ -89,6 +92,7 @@ export function MobileShelf({ kind, user, pending, onQuickLog, onDetailedLog, on
 
   return (
     <section className="mobile-shelf" aria-label={`${kind === "cig" ? "Cigarette" : "Drink"} shelf`}>
+      <button type="button" className="mobile-shelf__manage" onClick={onEditFavorites} disabled={pending}><span className="mobile-shelf__manage-icon" aria-hidden="true"><Star size={18}/></span><span><strong>Edit favorites</strong><small>{user ? `${favorites.length} of 3 on your home shelf · choose & arrange` : "Choose your brands. Save them to your account."}</small></span><ChevronRight size={17} aria-hidden="true"/></button>
       <p id={helpId} className="mobile-shelf__intro">
         Tap + to log one. Change the price or quantity below.
       </p>
@@ -136,7 +140,6 @@ export function MobileShelf({ kind, user, pending, onQuickLog, onDetailedLog, on
               : product.kind === "cig"
                 ? suggestedLoosePrice(product.id, user?.defaultPrice ?? 25)
                 : displayCost(product);
-            const favorite = user?.favoriteIds.includes(product.id) ?? false;
             const unit = unitLabel(product);
             const priceHint = hasOverride ? "Your saved price" : product.kind === "drink" ? "Serving estimate" : "Suggested price";
 
@@ -164,16 +167,6 @@ export function MobileShelf({ kind, user, pending, onQuickLog, onDetailedLog, on
                   </button>
                   <button
                     type="button"
-                    className="mobile-shelf__favorite"
-                    aria-label={`${favorite ? "Remove" : "Add"} ${product.name} ${favorite ? "from" : "to"} favorites`}
-                    aria-pressed={favorite}
-                    disabled={pending}
-                    onClick={() => onFavorite(product.id)}
-                  >
-                    <StarIcon filled={favorite} />
-                  </button>
-                  <button
-                    type="button"
                     className="mobile-shelf__add"
                     aria-label={`Log one ${product.name} at ${fmtINR(price)}`}
                     disabled={pending}
@@ -183,14 +176,15 @@ export function MobileShelf({ kind, user, pending, onQuickLog, onDetailedLog, on
                   </button>
                 </div>
                 <div className="mobile-shelf__row-details">
+                  <button type="button" className="mobile-shelf__edit" disabled={pending} onClick={()=>onEditUsualPrice(product.id)} aria-label={`Usual price for ${product.name}`}>Usual price</button>
                   <button
                     type="button"
                     className="mobile-shelf__edit"
                     disabled={pending}
                     onClick={() => onDetailedLog(product.id)}
-                    aria-label={`Edit price or quantity for ${product.name}`}
+                    aria-label={`Log with details for ${product.name}: price or quantity`}
                   >
-                    Edit price / quantity
+                    Log with details
                   </button>
                   <PriceDetails product={product} reference={reference} />
                 </div>

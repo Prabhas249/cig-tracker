@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { Pool, neonConfig, type PoolClient } from "@neondatabase/serverless";
-import { DEFAULT_FAVORITES } from "./catalog";
+import { DEFAULT_FAVORITES, DEFAULT_DRINK_FAVORITES } from "./catalog";
 import { StoreError, SESSION_MS, emptyState, hashToken, text, username, password, settingsFor, eventFor, friendData, revisionFor, type FriendCig } from "./store-common";
 import type { AsyncTrackerStore, MutationResult, StoreInput } from "./store-types";
 import type { User, TrackerState, FriendRequest, SocialEvent } from "./social-types";
@@ -124,7 +124,7 @@ export class CloudStore implements AsyncTrackerStore {
       const hash=await deriveKey(secret,salt,64) as Buffer;
       const user:User={id:randomUUID(),name,username:handle,inviteCode:`ASH-${randomBytes(6).toString("hex").toUpperCase()}`,
         timezone:"Asia/Kolkata",city:"",cigBaseline:8,drinkBaseline:2,dailyLimit:8,defaultPrice:25,sharing:"summary",
-        priceOverrides:{},favoriteIds:[...DEFAULT_FAVORITES],createdAt:new Date().toISOString()};
+        priceOverrides:{},favoriteIds:[...DEFAULT_FAVORITES,...DEFAULT_DRINK_FAVORITES],createdAt:new Date().toISOString()};
       sessionToken=await this.transaction(client,async()=>{
         if((await client.query("SELECT id FROM ashtray.users WHERE username=$1",[handle])).rowCount)throw new StoreError("That username is already taken. Try another one.",409);
         await client.query("INSERT INTO ashtray.users(id,username,invite_code,password_hash,password_salt,profile_json,created_at) VALUES($1,$2,$3,$4,$5,$6::jsonb,$7)",

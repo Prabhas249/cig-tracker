@@ -85,6 +85,7 @@ export function useTrackerState() {
       if (!active.current || generation !== epoch.current || serial !== getSerial.current || mutationActive.current) return;
       apply(next);
       if (next.user && connectionLive.current) setSyncStatus("live");
+      return next;
     } catch (cause) {
       if (!active.current || generation !== epoch.current || serial !== getSerial.current || (controller.signal.aborted && controller.signal.reason !== "timeout")) return;
       setSyncStatus(navigator.onLine ? "reconnecting" : "offline");
@@ -102,7 +103,7 @@ export function useTrackerState() {
 
   const mutate = useCallback(async (action: string, input: Record<string, unknown> = {}): Promise<TrackerState | false> => {
     if (mutationActive.current) return false;
-    if (!navigator.onLine) { setSyncStatus("offline"); setError("You’re offline. Reconnect before saving this check-in."); return false; }
+    if (!navigator.onLine) { setSyncStatus("offline"); setError(action === "log" ? "You’re offline. Reconnect before saving this check-in." : "You’re offline. Reconnect before saving your changes."); return false; }
     mutationActive.current = true;
     epoch.current += 1;
     const generation = epoch.current;
@@ -136,7 +137,11 @@ export function useTrackerState() {
       return next as TrackerState;
     } catch (cause) {
       if (!active.current || generation !== epoch.current) return false;
-      const message = controller.signal.aborted ? "The tracker took too long to respond. Try again; the same check-in won’t be added twice." : cause instanceof Error ? cause.message : "Unable to save. Check your connection and try again.";
+      const timeoutMessage = action === "log" ? "The tracker took too long to respond. Try again; the same check-in won’t be added twice."
+        : action === "settings" ? "The tracker took too long to respond. Reload your saved choices to check whether your changes were saved."
+        : action === "register" || action === "login" ? "The tracker took too long to respond. Try logging in again."
+        : "The tracker took too long to respond. Refresh your tracker and try again.";
+      const message = controller.signal.aborted ? timeoutMessage : cause instanceof Error ? cause.message : "Unable to save. Check your connection and try again.";
       if (logRequestId) {
         if (rejected) retryIds.current.delete(signature);
         else uncertainLogs.current.set(logRequestId,message);

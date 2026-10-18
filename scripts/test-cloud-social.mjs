@@ -76,6 +76,7 @@ async function stageModule(sourcePath) {
 try {
   const modulePath = await stageModule(join(library, "cloud-store.ts"));
   const { CloudStore } = await import(pathToFileURL(modulePath));
+  const { DEFAULT_FAVORITES, DEFAULT_DRINK_FAVORITES } = await import(pathToFileURL(await stageModule(join(library, "catalog.ts"))));
   const { Pool, neonConfig } = await import("@neondatabase/serverless");
   if (typeof globalThis.WebSocket !== "function") throw Object.assign(new Error(), { code: "NODE_WEBSOCKET_REQUIRED" });
   neonConfig.webSocketConstructor = globalThis.WebSocket;
@@ -119,6 +120,36 @@ try {
   assert.equal((await store.state(ownerToken)).user.id, owned[0].id);
   await store.mutate({ action: "settings", timezone: "UTC" }, ownerToken);
 
+  checkpoint("ordered favorites, account isolation and concurrent editors");
+  assert.deepEqual(a.state.user.favoriteIds, [...DEFAULT_FAVORITES, ...DEFAULT_DRINK_FAVORITES], "New cloud accounts seed both shelves");
+  const initialFavorites = [...a.state.user.favoriteIds];
+  const favoriteOrder = ["kingfisher-premium", "classic-milds", "marlboro-red"];
+  const beforeFavorites = await store.syncRevision(ownerToken);
+  const viewerFavoriteRevision = await peer.syncRevision(viewerToken);
+  const favoriteSave = await store.mutate({ action: "settings", favoriteIds: [...favoriteOrder, "classic-milds"], expectedFavoriteIds: initialFavorites, userId: owned[1].id }, ownerToken);
+  assert.deepEqual(favoriteSave.state.user.favoriteIds, favoriteOrder, "Cloud favorites preserve the first occurrence order");
+  assert.notEqual(favoriteSave.state.revision, beforeFavorites);
+  assert.deepEqual((await peer.state(viewerToken)).user.favoriteIds, b.state.user.favoriteIds, "A forged user ID cannot change another account's favorites");
+  assert.equal(await peer.syncRevision(viewerToken), viewerFavoriteRevision);
+  await assert.rejects(() => peer.mutate({ action: "settings", favoriteIds: ["marlboro-red"], expectedFavoriteIds: initialFavorites, name: "Must not save" }, ownerToken), error => error.status === 409 && error.message === "Your favorites changed on another device. Reload your saved favorites and try again.");
+  assert.equal((await store.state(ownerToken)).user.name, "Cloud QA owner", "A cloud conflict cannot partially save unrelated settings");
+  await rejects(() => store.mutate({ action: "settings", favoriteIds: [], expectedFavoriteIds: [...favoriteOrder].reverse() }, ownerToken), 409);
+  for (const invalid of [["not-in-catalog"], [42], Array(13).fill("marlboro-red")]) {
+    await rejects(() => store.mutate({ action: "settings", favoriteIds: invalid }, ownerToken), 400);
+  }
+  await rejects(() => store.mutate({ action: "settings", favoriteIds: [], expectedFavoriteIds: "invalid" }, ownerToken), 400);
+  await store.mutate({ action: "settings", favoriteIds: [], expectedFavoriteIds: favoriteOrder }, ownerToken);
+  assert.deepEqual((await peer.state(ownerToken)).user.favoriteIds, [], "An empty shelf persists across cloud instances");
+  const favoriteContenders = await Promise.allSettled([
+    store.mutate({ action: "settings", favoriteIds: ["marlboro-red"], expectedFavoriteIds: [] }, ownerToken),
+    peer.mutate({ action: "settings", favoriteIds: ["classic-milds"], expectedFavoriteIds: [] }, ownerToken),
+  ]);
+  assert.equal(favoriteContenders.filter(result => result.status === "fulfilled").length, 1, "Only one cloud editor can save against the same original snapshot");
+  assert.equal(favoriteContenders.filter(result => result.status === "rejected" && result.reason.status === 409).length, 1);
+  const favoriteWinner = favoriteContenders.find(result => result.status === "fulfilled").value;
+  assert.deepEqual((await peer.state(ownerToken)).user.favoriteIds, favoriteWinner.state.user.favoriteIds, "A conflicting concurrent save cannot overwrite the winner");
+  await store.mutate({ action: "settings", favoriteIds: ["marlboro-red", "classic-milds"] }, ownerToken);
+
   checkpoint("owner isolation and historical costs");
   const viewerRevision = await peer.syncRevision(viewerToken);
   const original = await store.mutate({ action: "log", productId: "classic-milds", quantity: 2, unitCostInr: 27.25, note: privateNote }, ownerToken);
@@ -155,6 +186,10 @@ try {
   viewerState = await peer.state(viewerToken);
   assert.equal(viewerState.friends[0].activity, null, "Existing summary mode must not expose the detailed timeline");
   assert.equal(viewerState.friends[0].stats.todayCigs, 3);
+  assert.equal(JSON.stringify(viewerState.friends).includes("favoriteIds"), false);
+  const connectedFavoritesRevision = await peer.syncRevision(viewerToken);
+  await store.mutate({ action: "settings", favoriteIds: ["classic-milds", "marlboro-red"], expectedFavoriteIds: ["marlboro-red", "classic-milds"] }, ownerToken);
+  assert.equal(await peer.syncRevision(viewerToken), connectedFavoritesRevision, "Accepted friends do not receive favorite-change invalidations");
   const beforeOptIn = await peer.syncRevision(viewerToken);
   await store.mutate({ action: "settings", sharing: "activity" }, ownerToken);
   assert.notEqual(await peer.syncRevision(viewerToken), beforeOptIn);
@@ -228,6 +263,7 @@ try {
   stores.push(fresh);
   ownerState = await fresh.state(ownerToken);
   assert.equal(ownerState.user.id, owned[0].id);
+  assert.deepEqual(ownerState.user.favoriteIds, ["classic-milds", "marlboro-red"], "Saved order and an explicitly empty drink shelf survive a fresh cloud instance");
   assert.equal(ownerState.events.length, 4);
   assert.equal(ownerState.events.find((event) => event.id === originalId).unitCostInr, 27.25);
   assert.equal((await fresh.state(viewerToken)).friends[0].id, owned[0].id);

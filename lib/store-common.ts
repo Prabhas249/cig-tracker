@@ -44,6 +44,27 @@ function object(value: unknown, label: string): StoreInput {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new StoreError(`${label} must be an object.`);
   return value as StoreInput;
 }
+/** Optional compare-and-save guard for a favorites editor's original snapshot. */
+export function assertFavoriteVersion(user: User, input: StoreInput): void {
+  if (input.favoriteIds === undefined || input.expectedFavoriteIds === undefined) return;
+  const expected = input.expectedFavoriteIds;
+  if (!Array.isArray(expected) || expected.length > 12 || expected.some(id => typeof id !== "string" || !CATALOG.some(product => product.id === id))) {
+    throw new StoreError("Choose a valid saved favorites list.");
+  }
+  if (expected.length !== user.favoriteIds.length || expected.some((id, index) => id !== user.favoriteIds[index])) {
+    throw new StoreError("Your favorites changed on another device. Reload your saved favorites and try again.", 409);
+  }
+}
+/** Change only one product, preserving prices saved by another device. */
+export function priceOverrideFor(current: Record<string, number>, value: unknown): Record<string, number> {
+  const change = object(value, "Price override");
+  const id = text(change.productId, "Product", 1, 80);
+  if (!CATALOG.some(product => product.id === id)) throw new StoreError("Choose a product from the catalog.");
+  const next = { ...current };
+  if (change.price === null) delete next[id];
+  else next[id] = price(change.price);
+  return next;
+}
 export function settingsFor(user: User, input: StoreInput): User {
   const next = { ...user };
   if (input.name !== undefined) next.name = text(input.name, "Name", 1, 60);
@@ -66,7 +87,9 @@ export function settingsFor(user: User, input: StoreInput): User {
       next.priceOverrides[id] = price(amount);
     }
   }
+  if (input.priceOverride !== undefined) next.priceOverrides = priceOverrideFor(next.priceOverrides, input.priceOverride);
   if (input.favoriteIds !== undefined) {
+    assertFavoriteVersion(user, input);
     if (!Array.isArray(input.favoriteIds) || input.favoriteIds.length > 12 || input.favoriteIds.some(id => typeof id !== "string" || !CATALOG.some(product => product.id === id))) throw new StoreError("Choose up to 12 products from the catalog.");
     next.favoriteIds = [...new Set(input.favoriteIds as string[])];
   }

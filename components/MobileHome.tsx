@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowUpRight, ChevronDown, Plus } from "lucide-react";
+import { ArrowUpRight, ChevronDown, Plus, Star } from "lucide-react";
 import { AllIcon, GlassIcon, SmokeIcon } from "./Icons";
 import { ProductShot } from "./ProductShot";
 import { CATALOG, DEFAULT_DRINK_FAVORITES, DEFAULT_FAVORITES, displayCost, type Kind, type ProductDef } from "@/lib/catalog";
@@ -17,6 +17,7 @@ type MobileHomeProps = {
   now: number;
   onLog: (id: string, origin?: ObjectOrigin) => void;
   onOpenShelf: (kind: "cig" | "drink") => void;
+  onEditFavorites: (kind: Kind) => void;
   onViewActivity: () => void;
   onSettings: () => void;
   pending?: boolean;
@@ -31,7 +32,7 @@ function since(iso: string | null, now: number) {
   return minutes < 60 ? `${minutes}m ${String(seconds % 60).padStart(2, "0")}s` : fmtMins(minutes);
 }
 
-export default function MobileHome({ data, now, onLog, onOpenShelf, onViewActivity, onSettings, pending = false }: MobileHomeProps) {
+export default function MobileHome({ data, now, onLog, onOpenShelf, onEditFavorites, onViewActivity, onSettings, pending = false }: MobileHomeProps) {
   const [filter, setFilter] = useState<Filter>("all");
   const [clock, setClock] = useState(now);
   useEffect(() => { setClock(now); }, [now]);
@@ -50,14 +51,13 @@ export default function MobileHome({ data, now, onLog, onOpenShelf, onViewActivi
   const limit = data.user?.dailyLimit ?? 8;
   const spend = todayRows.reduce((total, event) => total + event.unitCostInr * event.quantity, 0);
   const gap = avgGapMins(todayRows.filter(event => filter !== "all" || event.kind === "cig").map(event => Date.parse(event.loggedAt)));
-  const favorites = (data.user?.favoriteIds.length ? data.user.favoriteIds : DEFAULT_FAVORITES)
+  const savedIds = data.user ? data.user.favoriteIds : [...DEFAULT_FAVORITES, ...DEFAULT_DRINK_FAVORITES];
+  const favorites = savedIds
     .map(id => CATALOG.find(product => product.id === id))
     .filter((product): product is ProductDef => !!product && product.kind === "cig")
     .slice(0, 3);
-  const savedDrinks = (data.user?.favoriteIds ?? []).map(id => CATALOG.find(product => product.id === id))
-    .filter((product): product is ProductDef => !!product && product.kind === "drink");
-  const drinkFavorites = (savedDrinks.length ? savedDrinks : DEFAULT_DRINK_FAVORITES.map(id => CATALOG.find(product => product.id === id))
-    .filter((product): product is ProductDef => !!product && product.kind === "drink")).slice(0, 3);
+  const drinkFavorites = savedIds.map(id => CATALOG.find(product => product.id === id))
+    .filter((product): product is ProductDef => !!product && product.kind === "drink").slice(0, 3);
   const date = new Intl.DateTimeFormat("en-IN", { weekday: "long", day: "numeric", month: "short", timeZone: timezone }).format(new Date(now));
   const price = (product: ProductDef) => data.user?.priceOverrides[product.id] ?? (product.kind === "cig" ? suggestedLoosePrice(product.id, data.user?.defaultPrice ?? 25) : displayCost(product));
 
@@ -78,6 +78,7 @@ export default function MobileHome({ data, now, onLog, onOpenShelf, onViewActivi
           <span className="mh-product-name">{product.name}</span>
           <span className="mh-product-price">{fmtINR(price(product))}</span>
         </button>)}
+        {Array.from({length:3-products.length}, (_,index)=><button type="button" className="mh-product mh-add-favorite" key={`empty-${index}`} onClick={()=>onEditFavorites(kind)} aria-label={`Choose ${kind==="cig"?"cigarette":"drink"} favorite ${products.length+index+1}`}><span className="mh-more-shape" aria-hidden="true"><Plus size={20}/></span><span className="mh-product-name">Add favorite</span><span className="mh-product-price">Your shelf</span></button>)}
         <button type="button" className="mh-product mh-more" onClick={() => onOpenShelf(kind)} aria-label={`Open ${kind === "cig" ? "cigarette" : "drink"} shelf`}>
           <span className="mh-more-shape" aria-hidden="true"><Plus size={24}/></span>
           <span className="mh-product-name">More</span><span className="mh-product-price">All brands</span>
@@ -103,6 +104,7 @@ export default function MobileHome({ data, now, onLog, onOpenShelf, onViewActivi
       </div>}
     </section>
 
+    <div className="mh-favorites-heading"><h2>Your favorites</h2><button type="button" onClick={()=>onEditFavorites(filter==="drink"?"drink":"cig")}><Star size={13}/>Edit favorites</button></div>
     {filter !== "drink" && shelf(favorites, "cig")}
     {filter !== "cig" && shelf(drinkFavorites, "drink")}
 
