@@ -5,8 +5,9 @@ import { CATALOG, displayCost, type Kind, type ProductDef } from "@/lib/catalog"
 import { getPriceReference, suggestedLoosePrice, type PriceReference } from "@/lib/pricing";
 import type { User } from "@/lib/social-types";
 import { fmtINR } from "@/lib/time";
-import { CloseIcon, PlusIcon } from "./Icons";
+import { CloseIcon } from "./Icons";
 import { ChevronRight, Star } from "lucide-react";
+import { ActionMark } from "./MotionUI";
 import { ProductShot } from "./ProductShot";
 import "./mobile-shelf.css";
 import { objectOrigin, type ObjectOrigin } from "@/lib/object-origin";
@@ -15,6 +16,8 @@ type MobileShelfProps = {
   kind: Kind;
   user: User | null;
   pending: boolean;
+  savingProduct?: string|null;
+  savedProduct?: string|null;
   onQuickLog: (id: string, origin?: ObjectOrigin) => void;
   onDetailedLog: (id: string) => void;
   onEditFavorites: () => void;
@@ -70,7 +73,7 @@ function PriceDetails({ product, reference }: { product: ProductDef; reference: 
   );
 }
 
-export function MobileShelf({ kind, user, pending, onQuickLog, onDetailedLog, onEditFavorites, onEditUsualPrice }: MobileShelfProps) {
+export function MobileShelf({ kind, user, pending, savingProduct=null, savedProduct=null, onQuickLog, onDetailedLog, onEditFavorites, onEditUsualPrice }: MobileShelfProps) {
   const [query, setQuery] = useState("");
   const searchId = useId();
   const helpId = useId();
@@ -168,11 +171,12 @@ export function MobileShelf({ kind, user, pending, onQuickLog, onDetailedLog, on
                   <button
                     type="button"
                     className="mobile-shelf__add"
-                    aria-label={`Log one ${product.name} at ${fmtINR(price)}`}
+                    aria-label={savingProduct===product.id?`Saving ${product.name}`:`Log one ${product.name} at ${fmtINR(price)}`}
+                    aria-busy={savingProduct===product.id}
                     disabled={pending}
                     onClick={event => onQuickLog(product.id, objectOrigin(event.currentTarget))}
                   >
-                    <PlusIcon />
+                    <ActionMark state={savingProduct===product.id?"saving":savedProduct===product.id?"saved":"ready"}/>
                   </button>
                 </div>
                 <div className="mobile-shelf__row-details">

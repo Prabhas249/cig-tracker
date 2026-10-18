@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, LayoutGroup, motion, useReducedMotion, type Variants } from "motion/react";
 import { ArrowLeft, Check, Cigarette, Lock, Plus, Search, Wine, X } from "lucide-react";
 import { CATALOG, type Kind } from "@/lib/catalog";
 import type { User } from "@/lib/social-types";
@@ -20,6 +21,30 @@ type Props = {
 
 const same = (a: string[], b: string[]) => a.length === b.length && a.every((id, i) => id === b[i]);
 const kindOf = (id: string) => CATALOG.find(product => product.id === id)?.kind;
+const settle = { type: "spring", duration: 0.24, bounce: 0 } as const;
+const iconSettle = { type: "spring", duration: 0.3, bounce: 0 } as const;
+const instant = { duration: 0 };
+const slotStates: Variants = {
+  visible: { opacity: 1 },
+  removed: (animated: boolean) => ({ opacity: 0, transition: { duration: animated ? 0.12 : 0 } }),
+};
+const iconStates: Variants = {
+  hidden: (animated: boolean) => ({
+    opacity: 0,
+    transform: animated ? "scale(0.25)" : "scale(1)",
+    filter: animated ? "blur(4px)" : "blur(0px)",
+    transition: animated ? iconSettle : instant,
+  }),
+  visible: (animated: boolean) => ({ opacity: 1, transform: "scale(1)", filter: "blur(0px)", transition: animated ? iconSettle : instant }),
+};
+
+function SelectionMark({ selected, animated }: { selected: boolean; animated: boolean }) {
+  return <AnimatePresence initial={false} custom={animated}>
+    <motion.span key={selected ? "selected" : "available"} custom={animated} variants={iconStates} initial={animated ? "hidden" : false} animate="visible" exit="hidden">
+      {selected ? <Check size={16}/> : <Plus size={17}/>}
+    </motion.span>
+  </AnimatePresence>;
+}
 
 export default function FavoritePicker({ user, initialKind, pending, error, onSave, onReload, onCancel, onEdit }: Props) {
   // A sync update must never erase a person's unfinished choices. The saved
@@ -30,6 +55,12 @@ export default function FavoritePicker({ user, initialKind, pending, error, onSa
   const [query, setQuery] = useState("");
   const [message, setMessage] = useState("");
   const [reloading, setReloading] = useState(false);
+  // Pointer gestures explain where a shelf item moved; keyboard actions stay
+  // immediate. This also covers synthetic clicks from assistive technology.
+  const [pointerIntent, setPointerIntent] = useState(false);
+  const reducedMotion = useReducedMotion();
+  const animated = pointerIntent && reducedMotion === false;
+  const layoutScope = useId();
   const searchId = useId();
   const hintId = useId();
   const searchRef = useRef<HTMLInputElement>(null);
@@ -81,33 +112,41 @@ export default function FavoritePicker({ user, initialKind, pending, error, onSa
     finally { setReloading(false); }
   }
 
-  return <form className="favorite-picker" onSubmit={async event => {
+  return <form className="favorite-picker" data-favorite-motion={animated ? "on" : "off"}
+    onPointerDownCapture={() => setPointerIntent(true)}
+    onKeyDownCapture={() => setPointerIntent(false)}
+    onClickCapture={event => { if (event.detail === 0) setPointerIntent(false); }}
+    onSubmit={async event => {
     event.preventDefault();
     if (busy) return;
     if (counts.cig > 3 || counts.drink > 3) { setMessage("Choose up to three favorites for each shelf before saving."); return; }
     if (!changed) { onCancel(); return; }
     await onSave(draft, expected);
   }}>
+    <LayoutGroup id={layoutScope}>
     <p className="favorite-picker__intro">Your brands, in your order. Choose up to three for each home shelf.</p>
     <div className="segmented favorite-picker__tabs" role="group" aria-label="Favorite type">
-      {([{id:"cig", name:"Smoke", Icon:Cigarette}, {id:"drink", name:"Drink", Icon:Wine}] as const).map(item => <button type="button" key={item.id} aria-pressed={kind === item.id} className={kind === item.id ? "selected" : ""} disabled={busy} onClick={() => { setKind(item.id); setQuery(""); setMessage(""); }}><item.Icon size={16}/>{item.name}<span>{counts[item.id]}/3</span></button>)}
+      {([{id:"cig", name:"Smoke", Icon:Cigarette}, {id:"drink", name:"Drink", Icon:Wine}] as const).map(item => <button type="button" key={item.id} aria-pressed={kind === item.id} className={kind === item.id ? "selected" : ""} disabled={busy} onClick={() => { setKind(item.id); setQuery(""); setMessage(""); }}>{kind === item.id && <motion.i aria-hidden="true" className="favorite-picker__tab-surface" layoutId={animated ? "favorite-kind" : undefined} initial={false} transition={animated ? settle : instant}/>}<item.Icon size={16}/>{item.name}<span>{counts[item.id]}/3</span></button>)}
     </div>
 
     <section className="favorite-picker__selection" aria-label={`${kind === "cig" ? "Cigarette" : "Drink"} favorites in home shelf order`}>
       <div className="favorite-picker__heading"><h3>On your home shelf</h3><span>{chosen.length} of 3 selected</span></div>
       <ol ref={slotsRef} className="favorite-picker__slots">
+        <AnimatePresence key={kind} initial={false} mode="popLayout" custom={animated}>
         {Array.from({length:Math.max(3, chosen.length)}, (_, index) => {
           const product = CATALOG.find(item => item.id === chosen[index]);
-          return <li key={product?.id ?? `empty-${index}`} data-favorite-id={product?.id} className={product ? "favorite-picker__slot" : "favorite-picker__slot is-empty"}>
+          return <motion.li key={product?.id ?? `empty-${index}`} data-favorite-id={product?.id} className={product ? "favorite-picker__slot" : "favorite-picker__slot is-empty"}
+            layout={animated ? "position" : false} layoutDependency={draft} custom={animated} variants={slotStates} initial={false} animate="visible" exit="removed" transition={{ layout: animated ? settle : instant }}>
             <span className="favorite-picker__number" aria-label={`Position ${index + 1}`}>{String(index + 1).padStart(2,"0")}</span>
             {product ? <>
               <button type="button" className="favorite-picker__remove" aria-label={`Remove ${product.name} from favorites`} disabled={busy} onClick={event => {if(event.detail===0)focusAfterEdit.current=chosen[index+1]??chosen[index-1]??"search";toggle(product.id);}}><X size={14}/></button>
-              <span className="favorite-picker__object" aria-hidden="true"><ProductShot product={product} size="sm"/></span>
+              <motion.span className="favorite-picker__object" aria-hidden="true" initial={animated ? {opacity:0,transform:"translateY(8px) scale(0.96)"} : false} animate={{opacity:1,transform:"translateY(0px) scale(1)"}} transition={animated ? settle : instant}><ProductShot product={product} size="sm"/></motion.span>
               <strong>{product.name}</strong>
               <button type="button" className="favorite-picker__move" disabled={busy || index === 0} aria-label={`Move ${product.name} earlier`} onClick={event => {if(event.detail===0&&index===1)focusAfterEdit.current=product.id;earlier(product.id);}}><ArrowLeft size={13}/><span>Earlier</span></button>
             </> : <button type="button" className="favorite-picker__empty-slot" disabled={busy} onClick={() => { searchRef.current?.focus(); searchRef.current?.scrollIntoView({block:"center",behavior:"instant"}); }} aria-label={`Choose favorite for position ${index + 1}`}><Plus size={22}/><span>Choose<br/>a favorite</span></button>}
-          </li>;
+          </motion.li>;
         })}
+        </AnimatePresence>
       </ol>
       <p className="favorite-picker__order-hint">Use Earlier to change the shelf order.</p>
     </section>
@@ -128,7 +167,7 @@ export default function FavoritePicker({ user, initialKind, pending, error, onSa
           <input type="checkbox" checked={selected} disabled={busy} onChange={() => toggle(product.id)} aria-label={`${product.name}${selected ? `, favorite ${index + 1}` : ""}`}/>
           <span className="favorite-picker__choice-art" aria-hidden="true"><ProductShot product={product} size="sm"/></span>
           <span className="favorite-picker__choice-copy"><strong>{product.name}</strong><small>{product.variant}</small></span>
-          <span className="favorite-picker__check" aria-hidden="true">{selected ? <Check size={16}/> : <Plus size={17}/>}</span>
+          <span className="favorite-picker__check" aria-hidden="true"><SelectionMark selected={selected} animated={animated}/></span>
         </label>
       </li>;
     })}</ul> : <div className="favorite-picker__no-results"><p>No matching brands.</p><button type="button" onClick={() => {setQuery("");searchRef.current?.focus();}}>Clear search</button></div>}
@@ -138,5 +177,6 @@ export default function FavoritePicker({ user, initialKind, pending, error, onSa
       <p className="favorite-picker__account"><Lock size={12} aria-hidden="true"/><span>Only your shelf · @{user.username}</span><span>{changed ? "Unsaved changes" : "Saved choices"}</span></p>
       <div className="favorite-picker__actions"><button type="button" className="button secondary" disabled={busy} onClick={onCancel}>Cancel</button><button className="button primary" disabled={busy}>{pending ? "Saving favorites…" : "Save favorites"}<Check size={16}/></button></div>
     </footer>
+    </LayoutGroup>
   </form>;
 }

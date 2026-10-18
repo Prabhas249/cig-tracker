@@ -11,6 +11,7 @@ import { avgGapMins, fmtINR, fmtMins, getZonedParts } from "@/lib/time";
 import type { TrackerState } from "@/lib/social-types";
 import "./mobile-home.css";
 import { objectOrigin, type ObjectOrigin } from "@/lib/object-origin";
+import { ActionMark, AnimatedValue } from "./MotionUI";
 
 type MobileHomeProps = {
   data: TrackerState;
@@ -21,6 +22,8 @@ type MobileHomeProps = {
   onViewActivity: () => void;
   onSettings: () => void;
   pending?: boolean;
+  savingProduct?: string|null;
+  savedProduct?: string|null;
 };
 
 type Filter = "all" | Kind;
@@ -32,8 +35,9 @@ function since(iso: string | null, now: number) {
   return minutes < 60 ? `${minutes}m ${String(seconds % 60).padStart(2, "0")}s` : fmtMins(minutes);
 }
 
-export default function MobileHome({ data, now, onLog, onOpenShelf, onEditFavorites, onViewActivity, onSettings, pending = false }: MobileHomeProps) {
+export default function MobileHome({ data, now, onLog, onOpenShelf, onEditFavorites, onViewActivity, onSettings, pending = false, savingProduct=null, savedProduct=null }: MobileHomeProps) {
   const [filter, setFilter] = useState<Filter>("all");
+  const [filterPointer, setFilterPointer] = useState(false);
   const [clock, setClock] = useState(now);
   useEffect(() => { setClock(now); }, [now]);
   useEffect(() => { const timer = setInterval(() => setClock(Date.now()), 1000); return () => clearInterval(timer); }, []);
@@ -69,14 +73,17 @@ export default function MobileHome({ data, now, onLog, onOpenShelf, onEditFavori
           className="mh-product"
           data-product-id={product.id}
           key={product.id}
+          data-saving={savingProduct===product.id||undefined}
+          data-saved={savedProduct===product.id||undefined}
           onClick={event => onLog(product.id, objectOrigin(event.currentTarget))}
           disabled={pending}
-          aria-label={`Log one ${product.name}, ${fmtINR(price(product))}`}
+          aria-label={savingProduct===product.id?`Saving ${product.name}`:`Log one ${product.name}, ${fmtINR(price(product))}`}
+          aria-busy={savingProduct===product.id}
         >
           <span className="mh-product-art" aria-hidden="true"><ProductShot product={product} className="mh-product-shot" size="lg"/></span>
-          <span className="mh-product-add" aria-hidden="true"><Plus size={17}/></span>
+          <span className="mh-product-add" aria-hidden="true"><ActionMark state={savingProduct===product.id?"saving":savedProduct===product.id?"saved":"ready"}/></span>
           <span className="mh-product-name">{product.name}</span>
-          <span className="mh-product-price">{fmtINR(price(product))}</span>
+          <span className="mh-product-price">{savingProduct===product.id?"Saving…":fmtINR(price(product))}</span>
         </button>)}
         {Array.from({length:3-products.length}, (_,index)=><button type="button" className="mh-product mh-add-favorite" key={`empty-${index}`} onClick={()=>onEditFavorites(kind)} aria-label={`Choose ${kind==="cig"?"cigarette":"drink"} favorite ${products.length+index+1}`}><span className="mh-more-shape" aria-hidden="true"><Plus size={20}/></span><span className="mh-product-name">Add favorite</span><span className="mh-product-price">Your shelf</span></button>)}
         <button type="button" className="mh-product mh-more" onClick={() => onOpenShelf(kind)} aria-label={`Open ${kind === "cig" ? "cigarette" : "drink"} shelf`}>
@@ -89,18 +96,18 @@ export default function MobileHome({ data, now, onLog, onOpenShelf, onEditFavori
 
   return <div className="mh-home">
     <div className="mh-date-row"><p>{date}</p><span>{data.user?.city || "Your daily tracker"}</span></div>
-    <div className="mh-filter" role="group" aria-label="Filter your tracker"><span className="mh-filter-indicator" aria-hidden="true" style={{translate:`${filter === "all" ? 0 : filter === "cig" ? 100 : 200}% 0`}}/>
-      {([{ id: "all", label: "All", Icon: AllIcon }, { id: "cig", label: "Smoke", Icon: SmokeIcon }, { id: "drink", label: "Drink", Icon: GlassIcon }] as const).map(({ id, label, Icon }) => <button key={id} type="button" aria-pressed={filter === id} onClick={() => setFilter(id)} className={filter === id ? "mh-filter-selected" : ""}><Icon filled={filter === id}/>{label}</button>)}
+    <div className="mh-filter" role="group" aria-label="Filter your tracker" data-motion={filterPointer?"on":"off"}><span className="mh-filter-indicator" aria-hidden="true" style={{translate:`${filter === "all" ? 0 : filter === "cig" ? 100 : 200}% 0`}}/>
+      {([{ id: "all", label: "All", Icon: AllIcon }, { id: "cig", label: "Smoke", Icon: SmokeIcon }, { id: "drink", label: "Drink", Icon: GlassIcon }] as const).map(({ id, label, Icon }) => <button key={id} type="button" aria-pressed={filter === id} onClick={event => {setFilterPointer(event.detail>0);setFilter(id);}} className={filter === id ? "mh-filter-selected" : ""}><Icon filled={filter === id}/>{label}</button>)}
     </div>
 
     <section className="mh-hero" aria-label="Time since last log and today's count">
       <h2>Since last</h2>
       {filter === "all" ? <div className="mh-combined">
-        <div><span className="mh-hero-kind">cigarette</span><p className={`mh-since${cigElapsed.length > 7 ? " mh-since-long" : ""}`}>{cigElapsed}</p><p className="mh-hero-detail"><strong>{stats.todayCigs}</strong> / <button className="mh-goal" type="button" onClick={onSettings} aria-label={`Edit daily cigarette limit, currently ${limit}`}>{limit}</button> today</p></div>
-        <div><span className="mh-hero-kind">drink</span><p className={`mh-since${drinkElapsed.length > 7 ? " mh-since-long" : ""}`}>{drinkElapsed}</p><p className="mh-hero-detail"><strong>{stats.todayDrinks}</strong> {stats.todayDrinks === 1 ? "serving" : "servings"} today</p></div>
+        <div><span className="mh-hero-kind">cigarette</span><p className={`mh-since${cigElapsed.length > 7 ? " mh-since-long" : ""}`}>{cigElapsed}</p><p className="mh-hero-detail"><strong><AnimatedValue value={stats.todayCigs}/></strong> / <button className="mh-goal" type="button" onClick={onSettings} aria-label={`Edit daily cigarette limit, currently ${limit}`}>{limit}</button> today</p></div>
+        <div><span className="mh-hero-kind">drink</span><p className={`mh-since${drinkElapsed.length > 7 ? " mh-since-long" : ""}`}>{drinkElapsed}</p><p className="mh-hero-detail"><strong><AnimatedValue value={stats.todayDrinks}/></strong> {stats.todayDrinks === 1 ? "serving" : "servings"} today</p></div>
       </div> : <div className="mh-single">
         <div><span className="mh-hero-kind">{filter === "cig" ? "cigarette" : "drink"}</span><p className={`mh-since${elapsed.length > 7 ? " mh-since-long" : ""}`}>{elapsed}</p><p className="mh-hero-detail">{(filter === "cig" ? lastCig : lastDrink) ? "since your last log" : "No logs yet"}</p></div>
-        <div className="mh-today-count"><strong>{todayCount}</strong>{filter === "cig" ? <button className="mh-goal" type="button" onClick={onSettings} aria-label={`Edit daily cigarette limit, currently ${limit}`}>/ {limit}</button> : <span>today</span>}</div>
+        <div className="mh-today-count"><strong><AnimatedValue value={todayCount}/></strong>{filter === "cig" ? <button className="mh-goal" type="button" onClick={onSettings} aria-label={`Edit daily cigarette limit, currently ${limit}`}>/ {limit}</button> : <span>today</span>}</div>
       </div>}
     </section>
 
@@ -109,11 +116,11 @@ export default function MobileHome({ data, now, onLog, onOpenShelf, onEditFavori
     {filter !== "cig" && shelf(drinkFavorites, "drink")}
 
     <div className="mh-stats">
-      <section><h2>Spent today</h2><strong>{fmtINR(spend)}</strong><p>{filter === "all" ? "smoke + drink" : filter === "cig" ? "cigarettes" : "drinks"} · actual logged prices</p></section>
+      <section><h2>Spent today</h2><strong><AnimatedValue value={fmtINR(spend)}/></strong><p>{filter === "all" ? "smoke + drink" : filter === "cig" ? "cigarettes" : "drinks"} · actual logged prices</p></section>
       <section><h2>{filter === "all" ? "Cigarette gap" : "Average gap"}</h2><strong>{gap === null ? "—" : fmtMins(gap)}</strong><p>{gap === null ? "available after 2 logs today" : "between today’s check-ins"}</p></section>
     </div>
 
-    <section className="mh-today-summary" aria-label="Today's logged totals"><div><h2>Today</h2><strong>{filter === "all" ? stats.todayCigs + stats.todayDrinks : todayCount}<span> logged</span></strong></div><p>{filter === "all" ? `${stats.todayCigs} sticks · ${stats.todayDrinks} drinks` : `${todayCount} ${filter === "cig" ? "sticks" : "servings"}`}<span>{fmtINR(spend)} recorded</span></p></section>
+    <section className="mh-today-summary" aria-label="Today's logged totals"><div><h2>Today</h2><strong><AnimatedValue value={filter === "all" ? stats.todayCigs + stats.todayDrinks : todayCount}/><span> logged</span></strong></div><p>{filter === "all" ? `${stats.todayCigs} stick${stats.todayCigs === 1 ? "" : "s"} · ${stats.todayDrinks} drink${stats.todayDrinks === 1 ? "" : "s"}` : `${todayCount} ${filter === "cig" ? "stick" : "serving"}${todayCount === 1 ? "" : "s"}`}<span>{fmtINR(spend)} recorded</span></p></section>
 
     <details className="mh-week">
       <summary><span>Last 7 days</span><span className="mh-week-total">{filter === "drink" ? rows.filter(event => event.kind === "drink" && stats.days.some(day => day.date === event.localDate)).reduce((sum, event) => sum + event.quantity, 0) : stats.weekCount} {filter === "drink" ? "servings" : stats.weekCount === 1 ? "cigarette" : "cigarettes"}<ChevronDown size={15}/></span></summary>

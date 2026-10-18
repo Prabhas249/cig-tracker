@@ -6,6 +6,8 @@ import { timeSince } from "@/lib/dashboard";
 import { fmtINR, getZonedParts } from "@/lib/time";
 import type { FriendActivityEntry, FriendSummary } from "@/lib/social-types";
 import { ProductShot } from "./ProductShot";
+import { AnimatePresence, motion, useReducedMotionConfig } from "motion/react";
+import { AnimatedValue } from "./MotionUI";
 import "./friend-card.css";
 
 type FriendCardProps = {
@@ -38,6 +40,7 @@ function logTime(log: FriendActivityEntry, timezone: string) {
 }
 
 export default function FriendCard({ friend, now, pending, onRemove }: FriendCardProps) {
+  const reduce = useReducedMotionConfig();
   const activity = friend.activity;
   const sharing = friend.sharing;
   const stats = sharing === "private" ? null : friend.stats;
@@ -56,22 +59,22 @@ export default function FriendCard({ friend, now, pending, onRemove }: FriendCar
   const weeklyMax = Math.max(1, ...weeklyCounts);
 
   function rows(items: FriendActivityEntry[]) {
-    return <ol className="fc-timeline">{items.map(log => {
+    return <ol className="fc-timeline"><AnimatePresence initial={false}>{items.map(log => {
       const product = CATALOG.find(product => product.id === log.productId && product.kind === "cig") ?? CATALOG.find(product => product.id === "other-cig");
       const time = logTime(log, activity!.timezone);
-      return <li className="fc-log" key={log.id}>
+      return <motion.li className="fc-log" key={log.id} layout={reduce?false:"position"} initial={reduce?false:{opacity:0,transform:"translateY(5px)"}} animate={{opacity:1,transform:"translateY(0px)"}} exit={{opacity:0}} transition={{duration:reduce?0:.2,ease:[.2,0,0,1]}}>
         <span className="fc-object" aria-hidden="true">{product ? <ProductShot product={product} size="sm"/> : <Cigarette size={19}/>}</span>
-        <div className="fc-log-copy"><strong>{log.productName}</strong><span className="fc-quantity" aria-label={`${log.quantity} ${log.quantity === 1 ? "cigarette" : "cigarettes"}`}><span aria-hidden="true">×{log.quantity}</span><span className="fc-quantity-label">{log.quantity === 1 ? "cigarette" : "cigarettes"}</span></span></div>
+        <div className="fc-log-copy"><strong>{log.productName}</strong><span className="fc-quantity"><span>×{log.quantity}</span><span className="fc-quantity-label">{log.quantity === 1 ? "cigarette" : "cigarettes"}</span></span></div>
         <time className="fc-time" dateTime={log.loggedAt} title={`${dateLabel} at ${time.clock} · ${activity!.timezone}`} aria-label={`${calendarLabel(log.localDate)}, ${time.clock} ${time.zone}`}><strong>{time.clock}</strong><span>{time.zone}</span></time>
-      </li>;
-    })}</ol>;
+      </motion.li>;
+    })}</AnimatePresence></ol>;
   }
 
   return <article className="fc-card" aria-label={`${friend.name}’s activity`}>
     <header className="fc-heading"><span className="fc-avatar" aria-hidden="true">{friend.name.trim().slice(0, 1).toUpperCase() || <UserRound size={18}/>}</span><div className="fc-identity"><h2>{friend.name}</h2><span>@{friend.username}</span></div><span className="fc-connected"><Check size={11} aria-hidden="true"/>Connected</span></header>
 
     {stats ? <>
-      <div className="fc-overview"><div className="fc-today"><span>{isToday ? "Today" : dateLabel}</span><strong>{stats.todayCigs}<small>{stats.todayCigs === 1 ? "cigarette" : "cigarettes"}</small></strong></div><div className="fc-week"><div className="fc-week-bars" role="img" aria-label={`Last seven days: ${weeklyCounts.join(", ")} cigarettes`}>{weeklyCounts.map((count, index) => <span key={index} style={{ height: `${count ? Math.max(5, count / weeklyMax * 26) : 2}px` }} aria-hidden="true"/>)}</div><span>{stats.weekCigs} this week · {fmtINR(stats.weekSpend)}</span></div></div>
+      <div className="fc-overview"><div className="fc-today"><span>{isToday ? "Today" : dateLabel}</span><strong><AnimatedValue value={stats.todayCigs}/><small>{stats.todayCigs === 1 ? "cigarette" : "cigarettes"}</small></strong></div><div className="fc-week"><div className="fc-week-bars" role="img" aria-label={`Last seven days: ${weeklyCounts.join(", ")} cigarettes`}>{weeklyCounts.map((count, index) => <span key={index} style={{ height: `${count ? Math.max(5, count / weeklyMax * 26) : 2}px` }} aria-hidden="true"/>)}</div><span>{stats.weekCigs} this week · {fmtINR(stats.weekSpend)}</span></div></div>
 
       {showActivity ? <section className="fc-activity" aria-label="Shared cigarette check-ins">
         <div className="fc-timeline-heading"><h3>{isToday ? "Today’s check-ins" : "Cigarette check-ins"}</h3><span>{dateLabel}</span></div>
