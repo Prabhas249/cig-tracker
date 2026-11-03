@@ -1,0 +1,47 @@
+/* The dialog owns the native top layer; its panel owns scrolling and motion. */
+dialog.modal.modal-sheet {
+  display: none;
+  position: fixed;
+  inset: 0 0 auto;
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  overflow: hidden;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ink);
+  opacity: 1;
+  transform: none;
+  translate: none;
+  animation: none;
+  transition: none;
+  overscroll-behavior: contain;
+}
+dialog.modal.modal-sheet[open] { display: flex; align-items: flex-end; justify-content: center; animation: none; }
+dialog.modal.modal-sheet::backdrop { background: transparent; backdrop-filter: none; }
+html:has(dialog.modal-sheet[open]) { overflow: hidden; }
+.modal-sheet__backdrop { position: absolute; inset: 0; background: rgb(17 17 16 / .28); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+.modal-sheet__panel { position: relative; width: 100%; max-width: 480px; max-height: min(90%, 900px); min-height: 0; overflow: auto; overscroll-behavior: contain; border-radius: 26px 26px 0 0; background: #fff; box-shadow: 0 -1px 0 rgb(255 255 255 / .6), 0 -2px 4px rgb(0 0 0 / .035), 0 -16px 48px rgb(0 0 0 / .14); transform-origin: center bottom; -webkit-overflow-scrolling: touch; scroll-padding-block: 16px max(24px, env(safe-area-inset-bottom)); }
+.modal-sheet__panel:has(.favorite-picker) { scroll-padding-block: 20px 150px; }
+.modal-sheet .modal-inner { padding-top: 0; }
+.modal-sheet .modal-inner::before { display: none; }
+.modal-sheet .modal-sheet__grabber { min-height: 44px; height: 44px; margin: 0; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+.modal-sheet .modal-sheet__grabber > span { width: 34px; height: 4px; border-radius: 4px; background: #c9c8bd; pointer-events: none; }
+.modal-sheet .modal-sheet__close { width: 44px; height: 44px; min-width: 44px; min-height: 44px; touch-action: manipulation; }
+.modal-sheet .modal-sheet__close svg { stroke-width: 1.5px; }
+.modal-sheet :is(.modal-sheet__grabber, .modal-sheet__close):focus-visible { outline-offset: 2px; }
+.modal-sheet[data-phase="dragging"] .modal-sheet__grabber { cursor: grabbing; }
+.modal-sheet[data-phase="closing"] .modal-sheet__panel { pointer-events: none; }
+.modal-sheet .modal-sheet__grabber:disabled { cursor: default; }
+.modal-sheet .modal-sheet__grabber:disabled > span { opacity: .55; }
+@media (prefers-reduced-motion: no-preference) {
+  .modal-sheet__close { transition: scale 150ms cubic-bezier(.2, 0, 0, 1), background-color 150ms; }
+  .modal-sheet__close:active:not(:disabled):not(:focus-visible) { scale: .96; }
+}
+@media (hover: hover) and (pointer: fine) { .modal-sheet__close:hover:not(:disabled) { background: #eae9e2; } }
+@media (forced-colors: active) { .modal-sheet__panel { border: 1px solid CanvasText; } .modal-sheet .modal-sheet__grabber > span { background: ButtonText; } }

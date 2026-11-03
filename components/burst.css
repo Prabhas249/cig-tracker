@@ -1,0 +1,246 @@
+/* One saved action, one physical object. No opaque PNG sheet or interaction layer. */
+.ash-log-burst-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  contain: layout style;
+  opacity: 1;
+}
+.ash-log-burst-overlay.is-interrupted { opacity: 0; }
+.ash-log-burst-stage {
+  position: absolute;
+  left: var(--burst-x);
+  top: var(--burst-y);
+  inline-size: 120px;
+  block-size: 180px;
+  margin-inline-start: -60px;
+  margin-block-start: -90px;
+  transform-origin: center;
+}
+.ash-log-burst-flight { position: relative; inline-size: 120px; block-size: 180px; transform-origin: 50% 50%; opacity: 0; }
+.ash-log-burst-air { position: absolute; inset: 0; transform: scale(var(--burst-scene-scale)); transform-origin: 50% 50%; }
+.ash-log-burst-object {
+  position: relative;
+  inline-size: 120px;
+  block-size: 180px;
+  transform-origin: 50% 75%;
+}
+.ash-log-burst-object > .ash-log-burst-art {
+  display: block;
+  inline-size: 120px;
+  block-size: 180px;
+  max-inline-size: none;
+  max-block-size: none;
+  margin: 0;
+  animation: none;
+}
+.ash-log-burst-art > svg { display: block; inline-size: 100%; block-size: 100%; overflow: visible; }
+.ash-log-burst-contact {
+  position: absolute;
+  left: calc(var(--burst-x) + var(--burst-from-x));
+  top: var(--burst-source-bottom);
+  inline-size: var(--burst-source-width);
+  block-size: 7px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgb(42 40 34 / .15), transparent 72%);
+  opacity: 0;
+}
+.ash-log-burst-tip-anchor {
+  position: absolute;
+  inline-size: 0;
+  block-size: 0;
+  transform: rotate(var(--tip-turn));
+}
+.ash-log-burst-ember {
+  position: absolute;
+  left: -11px;
+  top: -4px;
+  inline-size: 22px;
+  block-size: 9px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgb(255 189 93 / .95), rgb(217 71 19 / .7) 33%, rgb(182 50 13 / .18) 60%, transparent 75%);
+  opacity: 0;
+}
+.ash-log-burst-cap {
+  position: absolute;
+  left: -8px;
+  top: -6px;
+  inline-size: 16px;
+  block-size: 8px;
+  border-radius: 43% 48% 33% 35%;
+  background:
+    radial-gradient(ellipse at 27% 25%, #e0ddd3 0 11%, transparent 16%),
+    radial-gradient(ellipse at 71% 42%, #4d4b43 0 8%, transparent 13%),
+    radial-gradient(ellipse at 47% 74%, #ddd9cd 0 9%, transparent 15%),
+    linear-gradient(115deg, #99968b, #d0cdc1 43%, #77756c 77%, #49483f);
+  box-shadow: inset 0 -1px 0 rgb(57 43 31 / .65);
+  transform-origin: center bottom;
+  opacity: 0;
+}
+.ash-log-burst-smoke-origin,
+.ash-log-burst-ash-origin {
+  position: absolute;
+  inset: 0;
+  inline-size: 0;
+  block-size: 0;
+  transform: rotate(calc(-1 * var(--tip-turn)));
+}
+.ash-log-burst-smoke-origin { transform: rotate(calc(-1 * var(--tip-turn))) scale(var(--burst-smoke-scale)); transform-origin: 0 0; }
+.ash-log-burst-wisp {
+  position: absolute;
+  left: 0;
+  bottom: 1px;
+  margin-inline-start: -17px;
+  overflow: visible;
+  color: rgb(104 105 100 / .52);
+  transform-origin: 50% 100%;
+  opacity: 0;
+}
+.ash-log-burst-flake {
+  display: block;
+  position: absolute;
+  left: -2px;
+  top: -1px;
+  background: linear-gradient(125deg, #d3d0c3, #8d8a7d 44%, #57564e 77%);
+  clip-path: polygon(8% 7%, 70% 0, 100% 37%, 74% 88%, 30% 100%, 0 58%);
+  opacity: 0;
+}
+.ash-log-burst-drink-detail { position: absolute; inset: 0; }
+.ash-log-burst-glint {
+  position: absolute;
+  left: 29%;
+  top: 41%;
+  inline-size: 4px;
+  block-size: 61px;
+  border-radius: 50%;
+  background: linear-gradient(transparent, rgb(255 255 255 / .88), transparent);
+  transform: rotate(-7deg);
+  opacity: 0;
+}
+.ash-log-burst-liquid-surface { position: absolute; inline-size: 0; block-size: 0; }
+.ash-log-burst-ripple {
+  position: absolute;
+  left: -26px;
+  top: -3px;
+  inline-size: 52px;
+  block-size: 7px;
+  border: .8px solid rgb(255 250 233 / .62);
+  border-radius: 50%;
+  transform-origin: center;
+  opacity: 0;
+}
+.ash-log-burst-drink-detail.is-wine .ash-log-burst-ripple { inline-size: 44px; left: -22px; border-color: rgb(255 245 220 / .68); }
+.ash-log-burst-drink-detail.is-wine .ash-log-burst-glint { left: 32%; top: 23%; block-size: 43px; }
+.ash-log-burst-drink-detail.is-closed .ash-log-burst-glint { left: 36%; top: 42%; block-size: 69px; }
+.ash-log-burst-bubble { position: absolute; left: -9px; top: 30px; inline-size: 3px; block-size: 3px; border: 1px solid rgb(255 245 208 / .9); border-radius: 50%; opacity: 0; }
+.ash-log-burst-bubble.is-second { left: 11px; top: 42px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .ash-log-burst-overlay { display: block; transition: opacity 120ms cubic-bezier(.2, 0, 0, 1); }
+  .ash-log-burst-flight { animation: ash-log-fade var(--burst-duration) linear both; }
+  .ash-log-burst-stage.returns-to-source .ash-log-burst-flight { animation-name: ash-log-return; }
+  .ash-log-burst-object { animation: ash-log-cig-pose var(--burst-duration) cubic-bezier(.2, 0, 0, 1) both; }
+  .ash-log-burst-stage.is-drink .ash-log-burst-object { animation-name: ash-log-drink-pose; }
+  .ash-log-burst-contact { animation: ash-log-contact var(--burst-duration) linear both; }
+  .ash-log-burst-ember { animation: ash-log-ember 1560ms linear both; }
+  .ash-log-burst-cap { animation: ash-log-cap 760ms 410ms linear both; }
+  .ash-log-burst-wisp { animation: ash-log-curl 930ms cubic-bezier(.2, 0, .3, 1) both; }
+  .ash-log-burst-flake { animation: ash-log-gravity 710ms linear both; }
+  .ash-log-burst-glint { animation: ash-log-glint 1120ms ease-out both; }
+  .ash-log-burst-ripple { animation: ash-log-ripple 700ms 340ms ease-out both; }
+  .ash-log-burst-ripple.is-second { animation-delay: 430ms; }
+  .ash-log-burst-bubble { animation: ash-log-bubble 850ms 220ms ease-out both; }
+  .ash-log-burst-bubble.is-second { animation-delay: 430ms; }
+}
+@keyframes ash-log-return {
+  0% { opacity: 0; transform: translate3d(var(--burst-from-x), var(--burst-from-y), 0) scale(var(--burst-from-scale)); animation-timing-function: cubic-bezier(.16, 1, .3, 1); }
+  5% { opacity: 1; }
+  14% { transform: translate3d(var(--burst-lift-x), var(--burst-lift-y), 0) scale(calc(var(--burst-scene-scale) * .94)); animation-timing-function: cubic-bezier(.2, 0, 0, 1); }
+  28%, 67% { opacity: 1; transform: translate3d(0, 0, 0) scale(var(--burst-scene-scale)); animation-timing-function: cubic-bezier(.4, 0, .2, 1); }
+  82% { opacity: .9; transform: translate3d(var(--burst-return-x), var(--burst-return-y), 0) scale(calc(var(--burst-scene-scale) * .93)); animation-timing-function: cubic-bezier(.2, 0, 0, 1); }
+  96% { opacity: .18; transform: translate3d(var(--burst-from-x), var(--burst-from-y), 0) scale(var(--burst-from-scale)); }
+  100% { opacity: 0; transform: translate3d(var(--burst-from-x), var(--burst-from-y), 0) scale(var(--burst-from-scale)); }
+}
+@keyframes ash-log-fade {
+  0% { opacity: 0; transform: translate3d(var(--burst-from-x), var(--burst-from-y), 0) scale(var(--burst-from-scale)); animation-timing-function: cubic-bezier(.16, 1, .3, 1); }
+  5% { opacity: 1; }
+  14% { transform: translate3d(var(--burst-lift-x), var(--burst-lift-y), 0) scale(calc(var(--burst-scene-scale) * .94)); animation-timing-function: cubic-bezier(.2, 0, 0, 1); }
+  28%, 67% { opacity: 1; transform: translate3d(0, 0, 0) scale(var(--burst-scene-scale)); animation-timing-function: cubic-bezier(.2, 0, 0, 1); }
+  85% { opacity: .55; transform: translate3d(0, 8px, 0) scale(calc(var(--burst-scene-scale) * .99)); }
+  100% { opacity: 0; transform: translate3d(0, 12px, 0) scale(calc(var(--burst-scene-scale) * .97)); }
+}
+@keyframes ash-log-cig-pose {
+  0% { transform: rotate(0deg); }
+  14% { transform: rotate(-6deg); }
+  30%, 67% { transform: rotate(0deg); }
+  82% { transform: rotate(-3deg); }
+  100% { transform: rotate(0deg); }
+}
+@keyframes ash-log-drink-pose {
+  0% { transform: rotate(0deg); }
+  17% { transform: rotate(-5deg); }
+  32% { transform: rotate(1.5deg); }
+  46%, 67% { transform: rotate(0deg); }
+  82% { transform: rotate(2deg); }
+  100% { transform: rotate(0deg); }
+}
+@keyframes ash-log-contact {
+  0% { opacity: 0; transform: translateX(-50%) scale(.9); }
+  10% { opacity: .55; transform: translateX(-50%) scale(1); }
+  34%, 67% { opacity: .12; transform: translateX(-50%) scale(.76); }
+  92% { opacity: .6; transform: translateX(-50%) scale(1); }
+  100% { opacity: 0; transform: translateX(-50%) scale(.95); }
+}
+@keyframes ash-log-ember {
+  0% { opacity: 0; transform: scale(.85); }
+  22% { opacity: .5; transform: scale(1); }
+  42% { opacity: .82; transform: scale(1.09); }
+  61% { opacity: .42; transform: scale(.97); }
+  75% { opacity: .72; transform: scale(1.04); }
+  100% { opacity: 0; transform: scale(.9); }
+}
+@keyframes ash-log-cap {
+  0% { opacity: 0; transform: scaleY(.3); }
+  24% { opacity: .8; transform: scaleY(.55); }
+  74% { opacity: 1; transform: scaleY(1); }
+  84% { opacity: 1; transform: translateY(1px) rotate(3deg); }
+  100% { opacity: 0; transform: translateY(4px) rotate(12deg) scale(.8); }
+}
+@keyframes ash-log-curl {
+  0% { opacity: 0; transform: translate3d(0, 2px, 0) scale(.35, .3); }
+  16% { opacity: .39; }
+  45% { opacity: .24; }
+  100% { opacity: 0; transform: translate3d(var(--smoke-drift), -38px, 0) scale(1.14, 1.08); }
+}
+@keyframes ash-log-gravity {
+  0% { opacity: 0; transform: translate3d(0, -1px, 0) rotate(0deg); }
+  7% { opacity: .9; }
+  30% { opacity: .86; transform: translate3d(var(--ash-x-mid), var(--ash-y-early), 0) rotate(22deg); }
+  66% { opacity: .62; transform: translate3d(var(--ash-x-mid), var(--ash-y-mid), 0) rotate(58deg); }
+  84% { opacity: .4; }
+  100% { opacity: 0; transform: translate3d(var(--ash-x), var(--ash-y), 0) rotate(var(--ash-turn)); }
+}
+@keyframes ash-log-glint {
+  0%, 9% { opacity: 0; transform: translate3d(-7px, 0, 0) rotate(-7deg); }
+  31% { opacity: .8; }
+  69% { opacity: .35; }
+  100% { opacity: 0; transform: translate3d(9px, 2px, 0) rotate(4deg); }
+}
+@keyframes ash-log-ripple {
+  0% { opacity: 0; transform: scale(.45, .7); }
+  18% { opacity: .65; }
+  100% { opacity: 0; transform: scale(1.15, .9); }
+}
+@keyframes ash-log-bubble {
+  0% { opacity: 0; transform: translateY(0); }
+  22% { opacity: .8; }
+  100% { opacity: 0; transform: translateY(-30px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ash-log-burst-overlay { display: none; }
+  .ash-log-burst-overlay * { animation: none !important; }
+}

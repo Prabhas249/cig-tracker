@@ -1,0 +1,103 @@
+.usual-price-editor {
+  min-inline-size: 0;
+  color: var(--ink, #252522);
+  padding-block-end: max(4px, env(safe-area-inset-bottom));
+}
+
+.usual-price-editor__product {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-inline-size: 0;
+  padding: 12px 16px;
+  border-radius: 18px;
+  background: var(--paper, #eeece6);
+}
+
+.usual-price-editor__object {
+  display: grid;
+  place-items: center;
+  inline-size: 56px;
+  block-size: 90px;
+  flex: none;
+  pointer-events: none;
+}
+
+.usual-price-editor__object .product-shot {
+  display: block;
+  inline-size: 54px;
+  block-size: 82px;
+  filter: drop-shadow(0 5px 4px #00000012);
+}
+
+.usual-price-editor__product > div { min-inline-size: 0; }
+.usual-price-editor__name { display: block; font-size: 14px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.usual-price-editor__variant { display: block; font-size: 12px; line-height: 1.5; color: var(--muted, #65645f); margin-block-start: 2px; overflow-wrap: anywhere; }
+.usual-price-editor__current { display: block; font-size: 12px; line-height: 1.5; color: var(--muted, #65645f); margin-block-start: 10px; }
+.usual-price-editor__amount { display: block; font-size: 12px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+.usual-price-editor__amount strong { font-size: 15px; font-weight: 600; }
+.usual-price-editor__intro { margin: 18px 0; font-size: 13px; line-height: 1.6; color: var(--muted, #65645f); text-wrap: pretty; }
+
+.usual-price-editor .usual-price-editor__label { display: block; font-size: 13px; font-weight: 500; line-height: 1.5; margin: 0 0 8px; }
+.usual-price-editor .usual-price-editor__input {
+  inline-size: 100%;
+  min-inline-size: 0;
+  min-block-size: 48px;
+  margin: 0;
+  padding: 11px 13px;
+  border: 1px solid var(--line, #e5e3dd);
+  border-radius: 12px;
+  color: var(--ink, #252522);
+  background: #fff;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+.usual-price-editor__input[aria-invalid="true"] { border-color: var(--danger, #a63c32); }
+.usual-price-editor__input:read-only { color: var(--muted, #65645f); background: var(--paper, #eeece6); }
+.usual-price-editor__hint { margin: 8px 0 0; font-size: 12px; line-height: 1.5; color: var(--muted, #65645f); }
+.usual-price-editor__error { margin: 8px 0 0; color: var(--danger, #a63c32); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.usual-price-editor__form-error { margin-block-start: 16px; }
+
+.usual-price-editor__reset {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 3px 12px;
+  inline-size: 100%;
+  min-block-size: 48px;
+  margin-block-start: 18px;
+  padding: 10px 12px;
+  border: 1px solid var(--line, #e5e3dd);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ink, #252522);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: start;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.usual-price-editor__reset > span:last-child { color: var(--muted, #65645f); font-variant-numeric: tabular-nums; }
+.usual-price-editor__account { margin: 20px 0 10px; font-size: 12px; line-height: 1.5; color: var(--muted, #65645f); overflow-wrap: anywhere; }
+.usual-price-editor__actions { display: flex; gap: 10px; }
+.usual-price-editor__actions > .button { min-inline-size: 0; min-block-size: 48px; }
+.usual-price-editor__actions > .primary { flex: 1; }
+.usual-price-editor__actions > .secondary { padding-inline: 18px; }
+.usual-price-editor button:disabled { opacity: .55; cursor: wait; }
+.usual-price-editor :is(button, input):focus-visible { outline: 2px solid var(--ink, #252522); outline-offset: 3px; }
+
+@media (hover: hover) {
+  .usual-price-editor__reset:hover:not(:disabled) { background: var(--paper, #eeece6); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .usual-price-editor button { transition: scale 120ms cubic-bezier(.2, 0, 0, 1); }
+  .usual-price-editor button:active:not(:disabled) { scale: .96; }
+}
+@media (forced-colors: active) {
+  .usual-price-editor :is(button, input):focus-visible { outline-color: Highlight; }
+  .usual-price-editor__input[aria-invalid="true"] { outline: 2px solid Mark; }
+}

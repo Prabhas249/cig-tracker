@@ -1,0 +1,10 @@
+.sticker-object{--sticker-lift:0px;--sticker-turn:0deg;position:relative;display:inline-flex;align-items:flex-end;justify-content:center;inline-size:100%;block-size:100%;min-inline-size:0;isolation:isolate;flex:none;vertical-align:middle;pointer-events:none;transform:translateY(var(--sticker-lift)) rotate(var(--sticker-turn));transform-origin:50% 80%;filter:drop-shadow(0 1px .7px #00000024) drop-shadow(0 6px 4px #00000016)}
+.sticker-object__art{display:block;inline-size:100%;block-size:100%;overflow:visible;flex:none;shape-rendering:geometricPrecision}
+.sticker-object__tip-anchor{position:absolute;inset-inline-start:var(--sticker-tip-x);inset-block-start:var(--sticker-tip-y);inline-size:0;block-size:0}
+.sticker-object--sm{filter:drop-shadow(0 1px 1px #00000022) drop-shadow(0 3px 2px #0000000d)}
+.product-shot{display:inline-flex;align-items:flex-end;justify-content:center;inline-size:auto;aspect-ratio:2/3;min-inline-size:0;overflow:visible;vertical-align:middle;transform:none;filter:none;animation:none}
+.product-shot>.sticker-object{inline-size:100%;block-size:100%}
+@media(hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference){button:not(:disabled):hover .sticker-object{--sticker-lift:-3px;--sticker-turn:-2deg}button:not(:disabled):hover .sticker-object--bottle{--sticker-turn:2deg}button:not(:disabled):hover .sticker-object--wine{--sticker-turn:-1deg}}
+@media(prefers-reduced-motion:no-preference){.sticker-object{transition:transform 150ms cubic-bezier(.2,0,0,1)}button:not(:disabled):active:not(:focus-visible) .sticker-object{--sticker-lift:1px;--sticker-turn:.5deg;transform:translateY(var(--sticker-lift)) rotate(var(--sticker-turn)) scale(.96);transition-duration:90ms}}
+@media(prefers-reduced-motion:reduce){.sticker-object{transform:none!important;transition:none!important;animation:none!important}}
+@media(forced-colors:active){.sticker-object{forced-color-adjust:none}}
